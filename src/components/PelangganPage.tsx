@@ -84,11 +84,17 @@ export default function PelangganPage({ onBack }: { onBack: () => void }) {
 
   const sortedPelanggans = useMemo(() => {
     return [...pelanggans].sort((a, b) => {
+       // First by status (Active first)
        if (a.status === 'Aktif' && b.status !== 'Aktif') return -1;
        if (a.status !== 'Aktif' && b.status === 'Aktif') return 1;
-       return 0;
+       // Then by createdAt (Older first)
+       return (a.createdAt || 0) - (b.createdAt || 0);
     });
   }, [pelanggans]);
+
+  const sortedTarifs = useMemo(() => [...tarifs].sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0)), [tarifs]);
+  const sortedJalurs = useMemo(() => [...jalurs].sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0)), [jalurs]);
+  const sortedKolektors = useMemo(() => [...kolektors].sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0)), [kolektors]);
 
   const getCombinedAlamat = (p: Pelanggan, j?: Jalur) => {
     if (p.alamat) return p.alamat;
@@ -199,13 +205,13 @@ export default function PelangganPage({ onBack }: { onBack: () => void }) {
         )}
 
         {activeTab === 'tarif' && (
-          tarifs.length === 0 ? (
+          sortedTarifs.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-slate-400 gap-3">
               <Wallet size={48} className="opacity-20" />
               <p className="font-bold text-xs uppercase tracking-widest">Belum ada data tarif</p>
               <button onClick={handleAdd} className="mt-2 text-blue-600 font-bold text-xs uppercase underline">Tambah Sekarang</button>
             </div>
-          ) : tarifs.map((t, index) => (
+          ) : sortedTarifs.map((t, index) => (
             <div key={t.id} onClick={() => setModal({isOpen: true, mode: 'view', data: t})} className="cursor-pointer bg-white rounded-2xl p-4 shadow-sm border border-slate-200 flex justify-between items-center group hover:border-blue-300 transition-colors relative overflow-hidden">
               <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500 group-hover:bg-emerald-600 transition-colors"></div>
               <div className="flex items-center gap-3 pl-2">
@@ -218,13 +224,13 @@ export default function PelangganPage({ onBack }: { onBack: () => void }) {
         )}
 
         {activeTab === 'jalur' && (
-          jalurs.length === 0 ? (
+          sortedJalurs.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-slate-400 gap-3">
               <Route size={48} className="opacity-20" />
               <p className="font-bold text-xs uppercase tracking-widest">Belum ada data jalur</p>
               <button onClick={handleAdd} className="mt-2 text-blue-600 font-bold text-xs uppercase underline">Tambah Sekarang</button>
             </div>
-          ) : jalurs.map((j, index) => (
+          ) : sortedJalurs.map((j, index) => (
             <div key={j.id} onClick={() => setModal({isOpen: true, mode: 'view', data: j})} className="cursor-pointer bg-white rounded-2xl p-4 shadow-sm border border-slate-200 flex items-center justify-between group hover:border-blue-300 transition-colors relative overflow-hidden">
               <div className="absolute top-0 left-0 w-1 h-full bg-purple-500 group-hover:bg-purple-600 transition-colors"></div>
               <div className="flex items-center gap-3 pl-2">
@@ -237,13 +243,13 @@ export default function PelangganPage({ onBack }: { onBack: () => void }) {
         )}
 
         {activeTab === 'kolektor' && (
-          kolektors.length === 0 ? (
+          sortedKolektors.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-slate-400 gap-3">
               <UserSquare2 size={48} className="opacity-20" />
               <p className="font-bold text-xs uppercase tracking-widest">Belum ada data kolektor</p>
               <button onClick={handleAdd} className="mt-2 text-blue-600 font-bold text-xs uppercase underline">Tambah Sekarang</button>
             </div>
-          ) : kolektors.map((k, index) => (
+          ) : sortedKolektors.map((k, index) => (
             <div key={k.id} onClick={() => setModal({isOpen: true, mode: 'view', data: k})} className="cursor-pointer bg-white rounded-2xl p-4 shadow-sm border border-slate-200 space-y-3 group hover:border-blue-300 transition-colors relative overflow-hidden">
               <div className="absolute top-0 left-0 w-1 h-full bg-orange-500 group-hover:bg-orange-600 transition-colors"></div>
               <div className="absolute top-3 right-3 text-slate-200 font-black text-xl group-hover:text-orange-100 transition-colors">#{index + 1}</div>

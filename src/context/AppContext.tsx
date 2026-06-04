@@ -122,27 +122,32 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         };
 
         unsubPelanggans = onSnapshot(collection(db, 'pelanggans'), (s) => {
-          setPelanggans(s.docs.map(d => ({ ...d.data(), id: d.id } as Pelanggan)));
+          const data = s.docs.map(d => ({ ...d.data(), id: d.id } as Pelanggan));
+          setPelanggans(data.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0)));
           markLoaded();
         }, (e) => handleFirestoreErrorLocal(e, OperationType.LIST, 'pelanggans'));
         
         unsubTarifs = onSnapshot(collection(db, 'tarifs'), (s) => {
-          setTarifs(s.docs.map(d => ({ ...d.data(), id: d.id } as Tarif)));
+          const data = s.docs.map(d => ({ ...d.data(), id: d.id } as Tarif));
+          setTarifs(data.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0)));
           markLoaded();
         }, (e) => handleFirestoreErrorLocal(e, OperationType.LIST, 'tarifs'));
         
         unsubJalurs = onSnapshot(collection(db, 'jalurs'), (s) => {
-          setJalurs(s.docs.map(d => ({ ...d.data(), id: d.id } as Jalur)));
+          const data = s.docs.map(d => ({ ...d.data(), id: d.id } as Jalur));
+          setJalurs(data.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0)));
           markLoaded();
         }, (e) => handleFirestoreErrorLocal(e, OperationType.LIST, 'jalurs'));
         
         unsubKolektors = onSnapshot(collection(db, 'kolektors'), (s) => {
-          setKolektors(s.docs.map(d => ({ ...d.data(), id: d.id } as Kolektor)));
+          const data = s.docs.map(d => ({ ...d.data(), id: d.id } as Kolektor));
+          setKolektors(data.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0)));
           markLoaded();
         }, (e) => handleFirestoreErrorLocal(e, OperationType.LIST, 'kolektors'));
         
         unsubOperators = onSnapshot(collection(db, 'operators'), (s) => {
-          setOperators(s.docs.map(d => ({ ...d.data(), id: d.id } as Operator)));
+          const data = s.docs.map(d => ({ ...d.data(), id: d.id } as Operator));
+          setOperators(data.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0)));
           markLoaded();
         }, (e) => handleFirestoreErrorLocal(e, OperationType.LIST, 'operators'));
         
@@ -277,7 +282,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // Firestore Action Implementation
   const saveEntity = async (collectionName: string, id: string, data: any) => {
     try {
-      await setDoc(doc(db, collectionName, id), data);
+      const docRef = doc(db, collectionName, id);
+      const docSnap = await getDocFromServer(docRef).catch(() => null);
+      
+      const enrichedData = {
+        ...data,
+        createdAt: docSnap?.exists() ? (docSnap.data()?.createdAt || Date.now()) : Date.now(),
+        updatedAt: Date.now()
+      };
+      
+      await setDoc(docRef, enrichedData);
     } catch (e) {
       handleFirestoreErrorLocal(e, OperationType.WRITE, `${collectionName}/${id}`);
       throw e;
