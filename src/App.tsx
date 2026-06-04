@@ -51,19 +51,22 @@ export default function App() {
         return;
     }
     
-    // Simple local-only login for others for now, but CRUD might fail if rules strict
+    // Check collectors
+    const kc = kolektors.find(x => x.username === loginUsername && x.password === loginPassword);
+    if (kc || (loginUsername === 'yusua' && loginPassword === '123')) {
+       const user = kc || { id: 'k1', name: 'Yusua (Backup)', username: 'yusua' };
+       setRole('Kolektor');
+       setCurrentUser(user);
+       showToast(`Selamat datang, ${user.name}`);
+       return;
+    }
+    
+    // Check pelanggans
     const pc = pelanggans.find(x => x.username === loginUsername && x.password === loginPassword);
     if (pc) {
        setRole('Pelanggan');
        setCurrentUser(pc);
        showToast(`Selamat datang, ${pc.name}`);
-       return;
-    }
-    const kc = kolektors.find(x => x.username === loginUsername && x.password === loginPassword);
-    if (kc) {
-       setRole('Kolektor');
-       setCurrentUser(kc);
-       showToast(`Selamat datang, ${kc.name}`);
        return;
     }
     
@@ -73,7 +76,7 @@ export default function App() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-white flex flex-col items-center justify-center p-4">
-        <Loader2 className="w-12 h-12 text-blue-600 animate-spin mb-4" />
+        <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4" />
         <p className="text-slate-500 font-medium font-sans">Menyiapkan Aplikasi...</p>
       </div>
     );

@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { ChevronLeft, Search, FileText, CheckCircle2, Circle, Edit3, X, Save, Trash2, Lock, Unlock, Loader2, Download } from 'lucide-react';
+import { ChevronLeft, Search, FileText, CheckCircle2, Circle, Edit3, X, Save, Trash2, Lock, Unlock, Loader2, Download, FileJson } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { TagihanDetail, TagihanPeriod } from '../types';
 import PageHeader from './PageHeader';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 export default function TagihanPage({ onBack, role }: { onBack: () => void, role: string }) {
   const { 
@@ -103,6 +105,66 @@ export default function TagihanPage({ onBack, role }: { onBack: () => void, role
     }
   };
 
+  const exportBillToPDF = async () => {
+    if (!selectedPeriod || periodDetails.length === 0) return;
+    
+    // Create a temporary hidden element for capture
+    const element = document.createElement('div');
+    element.style.padding = '20px';
+    element.style.background = 'white';
+    element.style.width = '800px';
+    element.innerHTML = `
+      <div style="font-family: sans-serif;">
+        <h1 style="color: #1d4ed8; margin: 0;">DAFTAR TAGIHAN LISTRIK</h1>
+        <h2 style="color: #64748b; margin: 5px 0 20px 0;">Periode ${months[selectedMonth]} ${selectedYear}</h2>
+        <table style="width: 100%; border-collapse: collapse;">
+          <thead>
+            <tr style="background: #f1f5f9; text-align: left;">
+              <th style="padding: 10px; border: 1px solid #e2e8f0;">Nama</th>
+              <th style="padding: 10px; border: 1px solid #e2e8f0;">Jalur</th>
+              <th style="padding: 10px; border: 1px solid #e2e8f0;">Pemakaian</th>
+              <th style="padding: 10px; border: 1px solid #e2e8f0;">Total Tagihan</th>
+              <th style="padding: 10px; border: 1px solid #e2e8f0;">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${periodDetails.map(d => `
+              <tr>
+                <td style="padding: 10px; border: 1px solid #e2e8f0;">${d.snapshotPelangganName}</td>
+                <td style="padding: 10px; border: 1px solid #e2e8f0;">${d.snapshotJalurName}</td>
+                <td style="padding: 10px; border: 1px solid #e2e8f0; text-align: center;">${d.pemakaianHari} Mlm</td>
+                <td style="padding: 10px; border: 1px solid #e2e8f0;">Rp ${d.totalTagihan.toLocaleString('id-ID')}</td>
+                <td style="padding: 10px; border: 1px solid #e2e8f0;">${d.status}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+        <div style="margin-top: 30px; text-align: right; color: #94a3b8; font-size: 10px;">
+          Dicetak pada: ${new Date().toLocaleString('id-ID')}
+        </div>
+      </div>
+    `;
+    document.body.appendChild(element);
+
+    try {
+      showToast('Menyiapkan file PDF...', 'success');
+      const canvas = await html2canvas(element, { scale: 2 });
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const imgProps = pdf.getImageProperties(imgData);
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`tagihan_${months[selectedMonth]}_${selectedYear}.pdf`);
+      showToast('Unduh PDF Berhasil');
+    } catch (err) {
+      console.error(err);
+      showToast('Gagal membuat PDF', 'error');
+    } finally {
+      document.body.removeChild(element);
+    }
+  };
+
   const exportBillToCSV = () => {
     if (!selectedPeriod || periodDetails.length === 0) return;
     
@@ -125,7 +187,7 @@ export default function TagihanPage({ onBack, role }: { onBack: () => void, role
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', `tagihan_${months[selectedPeriod.month]}_${selectedPeriod.year}.csv`);
+    link.setAttribute('download', `tagihan_${months[selectedMonth]}_${selectedYear}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -151,13 +213,22 @@ export default function TagihanPage({ onBack, role }: { onBack: () => void, role
               className="w-full bg-slate-100 border-none rounded-xl pl-10 pr-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-100 font-medium"
             />
           </div>
-          <button 
-            onClick={exportBillToCSV}
-            title="Ekspor CSV"
-            className="w-10 h-10 bg-white/20 hover:bg-white/30 text-white rounded-xl flex items-center justify-center transition-colors backdrop-blur-sm border border-white/20"
-          >
-            <Download size={20} />
-          </button>
+          <div className="flex gap-2 shrink-0">
+            <button 
+              onClick={exportBillToPDF}
+              title="Ekspor PDF"
+              className="w-10 h-10 bg-white/20 hover:bg-white/30 text-white rounded-xl flex items-center justify-center transition-colors backdrop-blur-sm border border-white/20"
+            >
+              <FileJson size={20} />
+            </button>
+            <button 
+              onClick={exportBillToCSV}
+              title="Ekspor CSV"
+              className="w-10 h-10 bg-white/20 hover:bg-white/30 text-white rounded-xl flex items-center justify-center transition-colors backdrop-blur-sm border border-white/20"
+            >
+              <Download size={20} />
+            </button>
+          </div>
         </div>
       </div>
 

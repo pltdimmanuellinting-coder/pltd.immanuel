@@ -103,48 +103,70 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     let unsubAppSettings = () => {};
     let unsubPrintSettings = () => {};
 
-    const setupListeners = () => {
-      unsubPelanggans = onSnapshot(collection(db, 'pelanggans'), (s) => 
-        setPelanggans(s.docs.map(d => d.data() as Pelanggan)), (e) => handleFirestoreError(e, OperationType.LIST, 'pelanggans'));
-      
-      unsubTarifs = onSnapshot(collection(db, 'tarifs'), (s) => 
-        setTarifs(s.docs.map(d => d.data() as Tarif)), (e) => handleFirestoreError(e, OperationType.LIST, 'tarifs'));
-      
-      unsubJalurs = onSnapshot(collection(db, 'jalurs'), (s) => 
-        setJalurs(s.docs.map(d => d.data() as Jalur)), (e) => handleFirestoreError(e, OperationType.LIST, 'jalurs'));
-      
-      unsubKolektors = onSnapshot(collection(db, 'kolektors'), (s) => 
-        setKolektors(s.docs.map(d => d.data() as Kolektor)), (e) => handleFirestoreError(e, OperationType.LIST, 'kolektors'));
-      
-      unsubOperators = onSnapshot(collection(db, 'operators'), (s) => 
-        setOperators(s.docs.map(d => d.data() as Operator)), (e) => handleFirestoreError(e, OperationType.LIST, 'operators'));
-      
-      unsubPeriods = onSnapshot(collection(db, 'tagihanPeriods'), (s) => 
-        setTagihanPeriods(s.docs.map(d => d.data() as TagihanPeriod)), (e) => handleFirestoreError(e, OperationType.LIST, 'tagihanPeriods'));
-      
-      unsubDetails = onSnapshot(collection(db, 'tagihanDetails'), (s) => 
-        setTagihanDetails(s.docs.map(d => d.data() as TagihanDetail)), (e) => handleFirestoreError(e, OperationType.LIST, 'tagihanDetails'));
-      
-      unsubAppSettings = onSnapshot(doc(db, 'settings', 'app_settings'), (d) => {
-        if (d.exists()) setAppSettings(d.data() as any);
-      }, (e) => handleFirestoreError(e, OperationType.GET, 'settings/app_settings'));
+    const setupListeners = async () => {
+      try {
+        unsubPelanggans = onSnapshot(collection(db, 'pelanggans'), (s) => 
+          setPelanggans(s.docs.map(d => d.data() as Pelanggan)), (e) => handleFirestoreError(e, OperationType.LIST, 'pelanggans'));
+        
+        unsubTarifs = onSnapshot(collection(db, 'tarifs'), (s) => 
+          setTarifs(s.docs.map(d => d.data() as Tarif)), (e) => handleFirestoreError(e, OperationType.LIST, 'tarifs'));
+        
+        unsubJalurs = onSnapshot(collection(db, 'jalurs'), (s) => 
+          setJalurs(s.docs.map(d => d.data() as Jalur)), (e) => handleFirestoreError(e, OperationType.LIST, 'jalurs'));
+        
+        unsubKolektors = onSnapshot(collection(db, 'kolektors'), (s) => 
+          setKolektors(s.docs.map(d => d.data() as Kolektor)), (e) => handleFirestoreError(e, OperationType.LIST, 'kolektors'));
+        
+        unsubOperators = onSnapshot(collection(db, 'operators'), (s) => 
+          setOperators(s.docs.map(d => d.data() as Operator)), (e) => handleFirestoreError(e, OperationType.LIST, 'operators'));
+        
+        unsubPeriods = onSnapshot(collection(db, 'tagihanPeriods'), (s) => 
+          setTagihanPeriods(s.docs.map(d => d.data() as TagihanPeriod)), (e) => handleFirestoreError(e, OperationType.LIST, 'tagihanPeriods'));
+        
+        unsubDetails = onSnapshot(collection(db, 'tagihanDetails'), (s) => 
+          setTagihanDetails(s.docs.map(d => d.data() as TagihanDetail)), (e) => handleFirestoreError(e, OperationType.LIST, 'tagihanDetails'));
+        
+        unsubAppSettings = onSnapshot(doc(db, 'settings', 'app_settings'), (d) => {
+          if (d.exists()) setAppSettings(d.data() as any);
+        }, (e) => handleFirestoreError(e, OperationType.GET, 'settings/app_settings'));
 
-      unsubPrintSettings = onSnapshot(doc(db, 'settings', 'print_settings'), (d) => {
-        if (d.exists()) {
-          const data = d.data();
-          setF4Template(data?.f4Template || '');
-          if (data?.f4Config && Object.keys(data.f4Config).length > 0) {
-            setF4Config(data.f4Config);
+        unsubPrintSettings = onSnapshot(doc(db, 'settings', 'print_settings'), (d) => {
+          if (d.exists()) {
+            const data = d.data();
+            setF4Template(data?.f4Template || '');
+            if (data?.f4Config) {
+              setF4Config(data.f4Config);
+            }
           }
-        }
-      }, (e) => handleFirestoreError(e, OperationType.GET, 'settings/print_settings'));
+        }, (e) => handleFirestoreError(e, OperationType.GET, 'settings/print_settings'));
 
-      setIsLoading(false);
+      } catch (err) {
+        console.error("Critical error setting up listeners:", err);
+      } finally {
+        setIsLoading(false);
+      }
     };
 
-    setupListeners();
+    // Safety timeout: never stay stuck in loading more than 5s
+    const loadingTimeout = setTimeout(() => {
+      setIsLoading(false);
+    }, 5000);
+
+    const unsubAuth = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        setCurrentUser(user);
+        setupListeners();
+      } else {
+        signInAnonymously(auth).catch((e) => {
+          console.error("Auth error:", e);
+          setIsLoading(false);
+        });
+      }
+    });
 
     return () => {
+      clearTimeout(loadingTimeout);
+      unsubAuth();
       unsubPelanggans();
       unsubTarifs();
       unsubJalurs();

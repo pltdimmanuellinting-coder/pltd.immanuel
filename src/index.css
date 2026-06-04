@@ -5,6 +5,35 @@
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
 }
 
+@media print {
+  @page {
+    size: 330mm 215mm landscape;
+    margin: 0;
+  }
+  
+  body * {
+    visibility: hidden;
+  }
+  
+  #print-container, #print-container * {
+    visibility: visible;
+  }
+  
+  #print-container {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 330mm;
+    height: auto;
+    background: white;
+    visibility: visible !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+}
+
 @layer utilities {
   .hide-scrollbar::-webkit-scrollbar {
     display: none;
@@ -23,34 +52,5 @@
   .custom-scrollbar::-webkit-scrollbar-thumb {
     background-color: #cbd5e1;
     border-radius: 4px;
-  }
-
-  @media print {
-    @page {
-      size: 330mm 215mm landscape;
-      margin: 0;
-    }
-    
-    body * {
-      visibility: hidden;
-    }
-    
-    #print-container, #print-container * {
-      visibility: visible;
-    }
-    
-    #print-container {
-      position: absolute;
-      left: 0;
-      top: 0;
-      width: 330mm;
-      height: auto;
-      background: white;
-      visibility: visible !important;
-    }
-
-    .no-print {
-      display: none !important;
-    }
   }
 }
