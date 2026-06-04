@@ -29,8 +29,8 @@ export default function GenerateTagihanPage({ onBack }: { onBack: () => void }) 
   };
 
   const calculateDays = () => {
-    const start = new Date(selectedYear, selectedMonth, 5);
-    const end = new Date(selectedMonth === 11 ? selectedYear + 1 : selectedYear, (selectedMonth + 1) % 12, 4);
+    const start = new Date(selectedYear, selectedMonth - 1, 5);
+    const end = new Date(selectedYear, selectedMonth, 4);
     const diffTime = Math.abs(end.getTime() - start.getTime());
     const totalDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; 
     return totalDays;
@@ -128,7 +128,7 @@ export default function GenerateTagihanPage({ onBack }: { onBack: () => void }) 
           </div>
           <div className="mt-2 bg-blue-50 rounded-lg p-2 border border-blue-100 flex items-center justify-between text-[9px]">
             <div className="text-blue-800 leading-tight">
-              Rentang: <strong className="font-black">5 {months[selectedMonth].substring(0,3)} - 4 {months[(selectedMonth + 1) % 12].substring(0,3)}</strong>
+              Rentang: <strong className="font-black">5 {months[(selectedMonth + 11) % 12].substring(0,3)} - 4 {months[selectedMonth].substring(0,3)}</strong>
             </div>
             <div className="text-center bg-white px-2 py-0.5 rounded border border-blue-100 font-black text-blue-700 text-xs">
               {totalDays} Malam

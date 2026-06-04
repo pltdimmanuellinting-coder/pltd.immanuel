@@ -62,6 +62,7 @@ export default function PrintPage({ onBack }: { onBack: () => void }) {
       <div style="display: flex; flex-direction: column;">
         <table style="width: 100%; font-size: 11px; border-collapse: collapse;">
           <tr style="border-bottom: 1px solid #f1f5f9;"><td style="color: #64748b; padding: 4px 0;">Bulan</td><td style="text-align: right; font-weight: 900; color: #0000ff;">{{bulan_tagihan}}</td></tr>
+          <tr style="border-bottom: 1px solid #f1f5f9;"><td style="color: #64748b; padding: 4px 0;">Rentang</td><td style="text-align: right; font-weight: 900; color: #0000ff;">{{rentang_tagihan}}</td></tr>
           <tr style="border-bottom: 1px solid #f1f5f9;"><td style="color: #64748b; padding: 4px 0;">Tarif</td><td style="text-align: right; font-weight: 900; color: #0000ff;">{{tarif_name}}</td></tr>
           <tr style="border-bottom: 1px solid #f1f5f9;"><td style="color: #64748b; padding: 4px 0;">Pemakaian</td><td style="text-align: right; font-weight: 900; color: #0000ff;">{{pemakaian_malam}} Malam</td></tr>
         </table>
@@ -111,6 +112,8 @@ export default function PrintPage({ onBack }: { onBack: () => void }) {
         slipHtml = slipHtml.replace(/\{\{app_address\}\}/g, appSettings.address);
         slipHtml = slipHtml.replace(/\{\{tgl_cetak\}\}/g, new Date().toLocaleDateString('id-ID'));
         slipHtml = slipHtml.replace(/\{\{bulan_tagihan\}\}/g, `${months[selectedPeriod?.month || 0]} ${selectedPeriod?.year}`);
+        const rentang = `5 ${months[((selectedPeriod?.month ?? 0) + 11) % 12].substring(0,3)} - 4 ${months[selectedPeriod?.month || 0].substring(0,3)}`;
+        slipHtml = slipHtml.replace(/\{\{rentang_tagihan\}\}/g, rentang);
         slipHtml = slipHtml.replace(/\{\{tarif_name\}\}/g, d.snapshotTarifName);
         slipHtml = slipHtml.replace(/\{\{pemakaian_malam\}\}/g, d.pemakaianHari.toString());
         slipHtml = slipHtml.replace(/\{\{kolektor_name\}\}/g, d.kolektorName || 'Semua'); 
@@ -146,8 +149,8 @@ export default function PrintPage({ onBack }: { onBack: () => void }) {
   const handlePrintThermal = () => {
     if (!selectedPeriodId) return alert('Pilih periode tagihan terlebih dahulu');
     
-    // Simulate generating rawbt text layout
-    let printText = `${appSettings.appName}\n${appSettings.address}\nWA: 085179911407\nTagihan ${months[selectedPeriod?.month || 0]} ${selectedPeriod?.year}\n------------------------\n`;
+    const rentang = `5 ${months[((selectedPeriod?.month ?? 0) + 11) % 12].substring(0,3)} - 4 ${months[selectedPeriod?.month || 0].substring(0,3)}`;
+    let printText = `${appSettings.appName}\n${appSettings.address}\nWA: 085179911407\nTagihan ${months[selectedPeriod?.month || 0]} ${selectedPeriod?.year}\nPeriod: ${rentang}\n------------------------\n`;
     const toPrint = details.slice(0, 3); // mock just a few
     toPrint.forEach(d => {
       printText += `Nama: ${d.snapshotPelangganName}\nTotal: Rp ${d.totalTagihan.toLocaleString('id-ID')}\n------------------------\n`;
