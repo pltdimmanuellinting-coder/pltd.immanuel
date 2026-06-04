@@ -35,59 +35,80 @@ export default function TemplateStudioPage({ onBack }: { onBack: () => void }) {
   const slipWidth = availableWidth / 2;
   const slipHeight = availableHeight / 2;
 
-  const defaultHtml = `<div style="padding: 15px; font-family: 'Inter', system-ui, sans-serif; font-size: 11px; border: 1.5px solid #0f172a; border-radius: 12px; height: 100%; box-sizing: border-box; display: flex; flex-direction: column; background-color: #ffffff; color: #1e293b; position: relative; overflow: hidden;">
-  <div style="position: relative; z-index: 1; height: 100%; display: flex; flex-direction: column;">
-    <div style="display: flex; align-items: center; gap: 15px; border-bottom: 2px solid #0f172a; padding-bottom: 10px; margin-bottom: 12px;">
-      <div style="width: 40px; height: 40px; background: #f1f5f9; border-radius: 8px; display: flex; items-center; justify-content: center; overflow: hidden; border: 1px solid #e2e8f0;">
+  const defaultHtml = `<div style="padding: 15px; font-family: 'Inter', system-ui, sans-serif; font-size: 11px; border: 1px solid #cbd5e1; border-radius: 12px; height: 100%; box-sizing: border-box; display: flex; flex-direction: column; background-color: #ffffff; color: #1e293b; position: relative; overflow: hidden; box-shadow: inset 0 0 0 3px #f8fafc;">
+  <!-- Header Minimalist -->
+  <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 2px dashed #cbd5e1; padding-bottom: 12px; margin-bottom: 12px;">
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <div style="width: 44px; height: 44px; background: #f8fafc; border-radius: 10px; display: flex; align-items: center; justify-content: center; overflow: hidden; border: 1px solid #e2e8f0;">
         <img src="{{app_logo}}" style="width: 100%; height: 100%; object-fit: contain;" onerror="this.style.display='none'" />
       </div>
-      <div style="text-align: left; flex: 1;">
-        <strong style="color: #0f172a; font-size: 18px; line-height: 1; letter-spacing: 1px; text-transform: uppercase; display: block; margin-bottom: 2px;">{{app_name}}</strong>
-        <span style="font-size: 9px; color: #64748b; font-weight: bold; display: block;">{{app_address}}</span>
-      </div>
-      <div style="text-align: right; background: #0f172a; color: white; padding: 4px 10px; border-radius: 6px; font-size: 9px; font-weight: 800; letter-spacing: 1px; flex-shrink: 0;">
-        SLIP TAGIHAN
+      <div>
+        <strong style="color: #0f172a; font-size: 16px; font-weight: 900; line-height: 1.2; letter-spacing: -0.5px; text-transform: uppercase; display: block;">{{app_name}}</strong>
+        <span style="font-size: 10px; color: #64748b; font-weight: 500; display: block; max-width: 150px; line-height: 1.2;">{{app_address}}</span>
       </div>
     </div>
-    
-    <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 15px;">
-      <div style="display: flex; flex-direction: column; gap: 10px;">
-        <div style="background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0;">
-          <div style="color: #64748b; font-size: 9px; font-weight: 800; text-transform: uppercase; margin-bottom: 4px; letter-spacing: 0.5px;">Informasi Pelanggan</div>
-          <strong style="font-size: 14px; color: #0f172a; display: block; margin-bottom: 2px;">{{pelanggan_name}}</strong>
-          <span style="font-size: 10px; color: #64748b; font-family: monospace;">ID: #{{pelanggan_id}}</span>
-        </div>
-        
-        <div style="font-size: 10px; color: #64748b; display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-           <div style="background: #eff6ff; padding: 6px; border-radius: 6px; border: 1px solid #dbeafe;">
-             <span style="display: block; font-size: 8px; font-weight: 800;">USERNAME</span>
-             <strong style="color: #1e40af;">{{pelanggan_username}}</strong>
-           </div>
-           <div style="background: #eff6ff; padding: 6px; border-radius: 6px; border: 1px solid #dbeafe;">
-             <span style="display: block; font-size: 8px; font-weight: 800;">PASSWORD</span>
-             <strong style="color: #1e40af;">{{pelanggan_password}}</strong>
-           </div>
-        </div>
+    <div style="text-align: right;">
+      <div style="background: #2563eb; color: white; padding: 4px 10px; border-radius: 20px; font-size: 9px; font-weight: 700; display: inline-block; margin-bottom: 4px; box-shadow: 0 2px 4px rgba(37,99,235,0.2);">TAGIHAN LISTRIK</div>
+      <div style="font-size: 10px; color: #64748b; font-weight: 800;">{{bulan_tagihan}}</div>
+    </div>
+  </div>
+  
+  <div style="display: grid; grid-template-columns: 1.1fr 1fr; gap: 16px; flex: 1;">
+    <!-- Kiri: Info Pelanggan -->
+    <div style="display: flex; flex-direction: column; gap: 12px;">
+      <div style="background: #f8fafc; padding: 12px; border-radius: 10px; border: 1px solid #f1f5f9; position: relative; overflow: hidden;">
+        <div style="position: absolute; top: 0; left: 0; width: 4px; border-radius: 4px 0 0 4px; height: 100%; background: #2563eb;"></div>
+        <div style="color: #64748b; font-size: 9px; font-weight: 700; text-transform: uppercase; margin-bottom: 2px;">Data Pelanggan</div>
+        <strong style="font-size: 14px; font-weight: 800; color: #0f172a; display: block;">{{pelanggan_name}}</strong>
+        <span style="font-size: 10px; color: #64748b; font-family: 'JetBrains Mono', monospace; font-weight: 600;">ID: {{pelanggan_id}}</span>
       </div>
       
-      <div style="display: flex; flex-direction: column; justify-content: space-between;">
-        <table style="width: 100%; font-size: 11px; border-collapse: collapse;">
-          <tr style="border-bottom: 1px solid #f1f5f9;"><td style="color: #64748b; padding: 4px 0;">Bulan</td><td style="text-align: right; font-weight: 900; color: #0f172a;">{{bulan_tagihan}}</td></tr>
-          <tr style="border-bottom: 1px solid #f1f5f9;"><td style="color: #64748b; padding: 4px 0;">Tarif</td><td style="text-align: right; font-weight: 900; color: #0f172a;">{{tarif_name}}</td></tr>
-          <tr style="border-bottom: 1px solid #f1f5f9;"><td style="color: #64748b; padding: 4px 0;">Pemakaian</td><td style="text-align: right; font-weight: 900; color: #0f172a;">{{pemakaian_malam}} Malam</td></tr>
-          <tr><td style="color: #64748b; padding: 4px 0;">Kolektor</td><td style="text-align: right; font-weight: 900; color: #0f172a;">{{kolektor_name}}</td></tr>
-        </table>
-        
-        <!-- Blok Nominal (Non-inverted, clean professional look) -->
-        <div style="margin-top: 15px; background: #ffffff; border: 2px solid #0f172a; padding: 10px 15px; border-radius: 10px; text-align: right;">
-          <span style="font-size: 9px; font-weight: 800; color: #64748b; display: block; text-transform: uppercase; margin-bottom: 2px;">Total Tagihan</span>
-          <strong style="font-size: 20px; color: #0f172a; letter-spacing: 1px;">Rp {{total_tagihan}}</strong>
-        </div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+         <div style="background: #ffffff; padding: 8px; border-radius: 8px; border: 1.5px solid #e2e8f0;">
+           <span style="display: block; font-size: 8px; font-weight: 700; color: #64748b; margin-bottom: 2px;">USERNAME</span>
+           <strong style="color: #0f172a; font-family: 'JetBrains Mono', monospace; font-size: 10px;">{{pelanggan_username}}</strong>
+         </div>
+         <div style="background: #ffffff; padding: 8px; border-radius: 8px; border: 1.5px solid #e2e8f0;">
+           <span style="display: block; font-size: 8px; font-weight: 700; color: #64748b; margin-bottom: 2px;">PASSWORD</span>
+           <strong style="color: #0f172a; font-family: 'JetBrains Mono', monospace; font-size: 10px;">{{pelanggan_password}}</strong>
+         </div>
       </div>
     </div>
     
-    <div style="margin-top: 12px; font-size: 9px; color: #94a3b8; text-align: center; font-style: italic; border-top: 1px solid #f1f5f9; padding-top: 8px;">
-      "Terima kasih atas partisipasi Anda dalam mendukung ketersediaan listrik desa kita."
+    <!-- Kanan: Detail Tagihan -->
+    <div style="display: flex; flex-direction: column; justify-content: space-between;">
+      <div style="background: #ffffff; border-radius: 10px; padding: 0;">
+        <table style="width: 100%; border-collapse: collapse;">
+          <tr style="border-bottom: 1px solid #f1f5f9;"><td style="color: #64748b; font-size: 10px; padding: 4px 0; font-weight: 600;">Jalur</td><td style="text-align: right; font-size: 11px; font-weight: 800; color: #0f172a;">{{jalur_name}}</td></tr>
+          <tr style="border-bottom: 1px solid #f1f5f9;"><td style="color: #64748b; font-size: 10px; padding: 4px 0; font-weight: 600;">Tarif Daya</td><td style="text-align: right; font-size: 11px; font-weight: 800; color: #0f172a;">{{tarif_name}}</td></tr>
+          <tr style="border-bottom: 1px solid #f1f5f9;"><td style="color: #64748b; font-size: 10px; padding: 4px 0; font-weight: 600;">MCB</td><td style="text-align: right; font-size: 11px; font-weight: 800; color: #0f172a;">{{mcb}}</td></tr>
+          <tr style="border-bottom: 1px solid #f1f5f9;"><td style="color: #64748b; font-size: 10px; padding: 4px 0; font-weight: 600;">Total Tgl</td><td style="text-align: right; font-size: 11px; font-weight: 800; color: #0f172a;">{{total_hari_sebulan}} Hari</td></tr>
+          <tr style="border-bottom: 1px solid #f1f5f9;"><td style="color: #64748b; font-size: 10px; padding: 4px 0; font-weight: 600;">Mati Listrik</td><td style="text-align: right; font-size: 11px; font-weight: 800; color: #0f172a;">{{hari_mati_listrik}} Hari</td></tr>
+          <tr style="border-bottom: 1px solid #f1f5f9;"><td style="color: #64748b; font-size: 10px; padding: 4px 0; font-weight: 600;">Hidup Listrik</td><td style="text-align: right; font-size: 11px; font-weight: 800; color: #0f172a;">{{pemakaian_malam}} Malam</td></tr>
+          <tr style="border-bottom: 1px solid #f1f5f9;"><td style="color: #64748b; font-size: 10px; padding: 4px 0; font-weight: 600;">Tunggakan</td><td style="text-align: right; font-size: 10px; font-weight: 700; color: #ef4444;">{{tunggakan}}</td></tr>
+          <tr><td style="color: #64748b; font-size: 10px; padding: 4px 0; font-weight: 600;">Periode</td><td style="text-align: right; font-size: 10px; font-weight: 700; color: #0f172a;">{{rentang_tagihan}}</td></tr>
+        </table>
+      </div>
+      
+      <div style="background: #0f172a; border-radius: 10px; padding: 12px; margin-top: auto; color: white; display: flex; flex-direction: column; align-items: flex-end;">
+        <span style="font-size: 9px; font-weight: 600; color: #94a3b8; text-transform: uppercase;">Total Tagihan</span>
+        <div style="display: flex; align-items: flex-start; gap: 4px; margin-top: 2px;">
+          <span style="font-size: 10px; font-weight: 600; color: #94a3b8; margin-top: 2px;">Rp</span>
+          <strong style="font-size: 20px; font-weight: 800; letter-spacing: -0.5px; line-height: 1;">{{total_tagihan}}</strong>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Footer -->
+  <div style="margin-top: 12px; border-top: 1px solid #f1f5f9; padding-top: 10px; display: flex; justify-content: space-between; align-items: flex-end;">
+    <div>
+      <span style="font-size: 8px; font-weight: 800; color: #64748b; display: block; text-transform: uppercase;">Kolektor / Petugas</span>
+      <strong style="font-size: 11px; color: #0f172a; font-weight: 900; display: block; margin-top: 2px;">{{kolektor_name}}</strong>
+    </div>
+    <div style="text-align: right; font-size: 8px; color: #94a3b8; font-weight: 600;">
+      <div style="margin-bottom: 2px;"><span style="color: #0f172a; font-weight: 800;">WA: {{app_contact}}</span></div>
+      Cetak: {{tgl_cetak}}
     </div>
   </div>
 </div>`;
@@ -109,6 +130,7 @@ export default function TemplateStudioPage({ onBack }: { onBack: () => void }) {
     let res = code;
     res = res.replace(/\{\{app_name\}\}/g, appSettings.appName);
     res = res.replace(/\{\{app_address\}\}/g, appSettings.address);
+    res = res.replace(/\{\{app_contact\}\}/g, appSettings.appContact || '-');
     res = res.replace(/\{\{app_logo\}\}/g, appSettings.logo || '');
     res = res.replace(/\{\{pelanggan_name\}\}/g, 'Budi Santoso');
     res = res.replace(/\{\{pelanggan_id\}\}/g, 'PLTDIM-ABC1001');
@@ -116,9 +138,16 @@ export default function TemplateStudioPage({ onBack }: { onBack: () => void }) {
     res = res.replace(/\{\{pelanggan_password\}\}/g, '1234');
     res = res.replace(/\{\{kolektor_name\}\}/g, 'Bpk Rudi');
     res = res.replace(/\{\{bulan_tagihan\}\}/g, 'Mei 2026');
-    res = res.replace(/\{\{tarif_name\}\}/g, '7000 LAMPU');
+    res = res.replace(/\{\{rentang_tagihan\}\}/g, '5 Apr - 4 Mei');
+    res = res.replace(/\{\{tgl_cetak\}\}/g, '04/06/2026');
+    res = res.replace(/\{\{jalur_name\}\}/g, 'Lipat Gunting');
+    res = res.replace(/\{\{tarif_name\}\}/g, 'Rp. 8.000,- (LAMPU)');
+    res = res.replace(/\{\{mcb\}\}/g, '2A');
+    res = res.replace(/\{\{total_hari_sebulan\}\}/g, '31');
+    res = res.replace(/\{\{hari_mati_listrik\}\}/g, '0');
     res = res.replace(/\{\{pemakaian_malam\}\}/g, '31');
     res = res.replace(/\{\{total_tagihan\}\}/g, '217.000');
+    res = res.replace(/\{\{tunggakan\}\}/g, '0');
     return res;
   };
 
@@ -137,9 +166,21 @@ export default function TemplateStudioPage({ onBack }: { onBack: () => void }) {
         title="TEMPLATE STUDIO" 
         onBack={onBack} 
         rightAction={
-          <button onClick={handleSave} className="text-white font-black p-2 px-4 text-[10px] bg-emerald-500 rounded-xl flex items-center gap-2 hover:bg-emerald-600 shadow-xl shadow-emerald-500/30 active:scale-95 transition-all uppercase">
-            <Save size={16} /> Simpan
-          </button>
+          <div className="flex gap-2">
+            <button onClick={() => {
+              if(window.confirm('Reset template F4 ke versi modern default?')) {
+                setHtmlCodeF4(defaultHtml);
+                setF4Template(defaultHtml);
+                savePrintSettings(defaultHtml, config);
+                showToast('Template di-reset');
+              }
+            }} className="text-slate-500 font-bold p-2 px-3 text-[10px] bg-slate-100 rounded-xl hover:bg-slate-200 transition-colors uppercase flex items-center justify-center">
+              Reset
+            </button>
+            <button onClick={handleSave} className="text-white font-black p-2 px-4 text-[10px] bg-emerald-500 rounded-xl flex items-center gap-2 hover:bg-emerald-600 shadow-xl shadow-emerald-500/30 active:scale-95 transition-all uppercase">
+              <Save size={16} /> Simpan
+            </button>
+          </div>
         }
       />
 
@@ -180,7 +221,24 @@ export default function TemplateStudioPage({ onBack }: { onBack: () => void }) {
           <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 space-y-3">
              <div className="flex items-center justify-between mb-2 pb-2 border-b border-slate-100">
                <h3 className="text-sm font-bold text-slate-800">Pengaturan Kertas Panel</h3>
-               <button onClick={handleOrientationToggle} className="text-xs bg-slate-100 px-2 py-1 rounded font-bold text-slate-600 hover:bg-slate-200">Ubah Orientasi</button>
+               <div className="flex gap-2">
+                 <select 
+                   className="text-xs bg-slate-100 px-2 py-1 rounded font-bold text-slate-600 hover:bg-slate-200 outline-none"
+                   value={config.paperWidth > config.paperHeight ? (config.paperWidth === 330 ? 'F4' : 'A4') : (config.paperHeight === 330 ? 'F4' : 'A4')}
+                   onChange={(e) => {
+                     const isLandscape = config.paperWidth > config.paperHeight;
+                     if (e.target.value === 'A4') {
+                       setConfig(prev => ({ ...prev, paperWidth: isLandscape ? 297 : 210, paperHeight: isLandscape ? 210 : 297 }));
+                     } else {
+                       setConfig(prev => ({ ...prev, paperWidth: isLandscape ? 330 : 215, paperHeight: isLandscape ? 215 : 330 }));
+                     }
+                   }}
+                 >
+                   <option value="F4">Size: F4</option>
+                   <option value="A4">Size: A4</option>
+                 </select>
+                 <button onClick={handleOrientationToggle} className="text-xs bg-slate-100 px-2 py-1 rounded font-bold text-slate-600 hover:bg-slate-200">Ubah Orientasi</button>
+               </div>
              </div>
              <div className="grid grid-cols-2 gap-x-4 gap-y-3">
                 <div className="flex flex-col">
@@ -275,6 +333,28 @@ export default function TemplateStudioPage({ onBack }: { onBack: () => void }) {
                           dangerouslySetInnerHTML={{ __html: parseTemplate(htmlCodeF4) }}
                         />
                       ))}
+                      
+                      {/* Horizontal Cut Line */}
+                      <div className="absolute flex items-center justify-center pointer-events-none" style={{
+                         top: '50%',
+                         left: `${config.marginLeft}mm`,
+                         width: `calc(100% - ${config.marginLeft + config.marginRight}mm)`,
+                         borderTop: '1.5px dashed #94a3b8',
+                         zIndex: 0
+                      }}>
+                         <div className="bg-white px-2 py-0 text-[#94a3b8] text-[8px] sm:text-[10px] -mt-[14px]">✂️ Gunting disini</div>
+                      </div>
+                      
+                      {/* Vertical Cut Line */}
+                      <div className="absolute flex items-center justify-center flex-col pointer-events-none" style={{
+                         left: '50%',
+                         top: `${config.marginTop}mm`,
+                         height: `calc(100% - ${config.marginTop + config.marginBottom}mm)`,
+                         borderLeft: '1.5px dashed #94a3b8',
+                         zIndex: 0
+                      }}>
+                         <div className="bg-white py-2 px-0 text-[#94a3b8] text-[8px] sm:text-[10px] -ml-[14px]" style={{ transform: 'rotate(-90deg)' }}>✂️</div>
+                      </div>
                     </div>
                   </div>
                ) : (

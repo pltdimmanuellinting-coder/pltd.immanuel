@@ -22,11 +22,26 @@ export default function TagihanPage({ onBack, role }: { onBack: () => void, role
     'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
   ];
 
-  const handleDeletePeriod = async (id: string, e: React.MouseEvent) => {
-    e.stopPropagation(); // don't open details
-    if (window.confirm('PERINGATAN: Anda akan menghapus seluruh data tagihan dan riwayat pada periode ini. Lanjutkan?')) {
-      await deleteTagihanPeriod(id);
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
+  const [periodToDelete, setPeriodToDelete] = useState<string | null>(null);
+
+  const handleDeletePeriodClick = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setPeriodToDelete(id);
+  };
+
+  const confirmDeletePeriod = async () => {
+    if (!periodToDelete) return;
+    setIsDeleting(periodToDelete);
+    try {
+      await deleteTagihanPeriod(periodToDelete);
       showToast('Periode tagihan berhasil dihapus');
+    } catch (err: any) {
+      console.error('Delete error details:', err);
+      showToast(`Gagal menghapus: ${err.message || 'Kesalahan sistem'}`, 'error');
+    } finally {
+      setIsDeleting(null);
+      setPeriodToDelete(null);
     }
   };
 
@@ -59,10 +74,11 @@ export default function TagihanPage({ onBack, role }: { onBack: () => void, role
                   </div>
                   {role === 'Operator' && (
                     <button 
-                      onClick={(e) => handleDeletePeriod(p.id, e)}
-                      className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
+                      onClick={(e) => handleDeletePeriodClick(p.id, e)}
+                      disabled={isDeleting === p.id}
+                      className={`p-2 rounded-xl transition-all ${isDeleting === p.id ? 'text-slate-300' : 'text-red-400 hover:text-red-600 hover:bg-red-50'}`}
                     >
-                      <Trash2 size={20} />
+                      {isDeleting === p.id ? <Loader2 size={20} className="animate-spin" /> : <Trash2 size={20} />}
                     </button>
                   )}
                 </div>
@@ -70,6 +86,35 @@ export default function TagihanPage({ onBack, role }: { onBack: () => void, role
             ))
           )}
         </div>
+
+        {/* Delete Confirmation Modal */}
+        {periodToDelete && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+            <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl p-6">
+              <h3 className="text-lg font-bold text-slate-800 mb-2">Hapus Periode Tagihan?</h3>
+              <p className="text-sm text-slate-600 mb-6">
+                Peringatan: Anda akan menghapus seluruh data tagihan dan riwayat pada periode ini secara permanen. Lanjutkan?
+              </p>
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => setPeriodToDelete(null)}
+                  className="flex-1 px-4 py-2.5 rounded-xl text-slate-600 font-bold bg-slate-100 hover:bg-slate-200 transition-colors"
+                  disabled={!!isDeleting}
+                >
+                  Batal
+                </button>
+                <button 
+                  onClick={confirmDeletePeriod}
+                  className="flex-1 px-4 py-2.5 rounded-xl text-white font-bold bg-red-600 hover:bg-red-700 transition-colors flex justify-center items-center gap-2"
+                  disabled={!!isDeleting}
+                >
+                  {isDeleting ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={18} />}
+                  Ya, Hapus
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -232,7 +277,7 @@ export default function TagihanPage({ onBack, role }: { onBack: () => void, role
         </div>
       </div>
 
-      <div className="p-4 space-y-4 pb-32">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-32">
         {filteredDetails.map(d => (
           <div key={d.id} className={`bg-white rounded-xl p-4 shadow-sm border ${d.status === 'Lunas' ? 'border-emerald-200 bg-emerald-50/10' : 'border-slate-200'} transition-all relative overflow-hidden`}>
             {d.status === 'Lunas' && <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500"></div>}
@@ -328,9 +373,10 @@ export default function TagihanPage({ onBack, role }: { onBack: () => void, role
               </button>
             </div>
             
-            <form onSubmit={handleSaveEdit} className="p-5 space-y-4">
-              <div>
-                <label className="text-xs text-slate-500 font-bold mb-1 block">Tarif (Rp / Malam)</label>
+            <div className="overflow-y-auto max-h-[70vh]">
+              <form onSubmit={handleSaveEdit} className="p-5 space-y-4">
+                <div>
+                  <label className="text-xs text-slate-500 font-bold mb-1 block">Tarif (Rp / Malam)</label>
                 <select 
                   value={editingDetail.snapshotTarifName} 
                   onChange={e => {
@@ -371,11 +417,12 @@ export default function TagihanPage({ onBack, role }: { onBack: () => void, role
                   className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all font-medium rows-3"
                 ></textarea>
               </div>
-              <button type="submit" className="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-200 transition-colors flex justify-center items-center gap-2">
-                <Save size={18} />
-                Simpan Penyesuaian
-              </button>
-            </form>
+                <button type="submit" className="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-200 transition-colors flex justify-center items-center gap-2">
+                  <Save size={18} />
+                  Simpan Penyesuaian
+                </button>
+              </form>
+            </div>
           </div>
         </div>
       )}

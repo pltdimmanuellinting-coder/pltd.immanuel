@@ -4,7 +4,8 @@ import {
   initialPelanggans, initialTarifs, initialJalurs, initialKolektors 
 } from '../types';
 import { 
-  collection, doc, setDoc, deleteDoc, onSnapshot, query, getDocFromServer, getDocs, updateDoc 
+  collection, doc, setDoc, deleteDoc, onSnapshot, query, getDocFromServer, getDocs, updateDoc,
+  where, writeBatch 
 } from 'firebase/firestore';
 import { db, auth } from '../lib/firebase';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
@@ -18,14 +19,12 @@ type AppState = {
   operators: Operator[];
   tagihanPeriods: TagihanPeriod[];
   tagihanDetails: TagihanDetail[];
-  appSettings: { logo: string, profilePic: string, appName: string, address: string };
+  appSettings: { logo: string, profilePic: string, appName: string, address: string, appContact: string };
   f4Template: string;
   setF4Template: (t: string) => void;
   f4Config: any;
   setF4Config: (c: any) => void;
   savePrintSettings: (template: string, config: any) => Promise<void>;
-  printContent: string;
-  setPrintContent: (content: string) => void;
   setPelanggans: React.Dispatch<React.SetStateAction<Pelanggan[]>>;
   setTarifs: React.Dispatch<React.SetStateAction<Tarif[]>>;
   setJalurs: React.Dispatch<React.SetStateAction<Jalur[]>>;
@@ -33,8 +32,8 @@ type AppState = {
   setOperators: React.Dispatch<React.SetStateAction<Operator[]>>;
   setTagihanPeriods: React.Dispatch<React.SetStateAction<TagihanPeriod[]>>;
   setTagihanDetails: React.Dispatch<React.SetStateAction<TagihanDetail[]>>;
-  setAppSettings: React.Dispatch<React.SetStateAction<{ logo: string, profilePic: string, appName: string, address: string }>>;
-  saveAppSettings: (settings: { logo: string, profilePic: string, appName: string, address: string }) => Promise<void>;
+  setAppSettings: React.Dispatch<React.SetStateAction<{ logo: string, profilePic: string, appName: string, address: string, appContact: string }>>;
+  saveAppSettings: (settings: { logo: string, profilePic: string, appName: string, address: string, appContact: string }) => Promise<void>;
   showToast: (message: string, type?: 'success' | 'error') => void;
   currentUser: any | null;
   setCurrentUser: (user: any) => void;
@@ -74,7 +73,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     logo: '', 
     profilePic: '', 
     appName: 'PLTD IMMANUEL',
-    address: 'RT.007 RW.003 DUSUN LIPAT GUNTING'
+    address: 'RT.007 RW.003 DUSUN LIPAT GUNTING',
+    appContact: '08123456789'
   });
   const [f4Template, setF4Template] = useState('');
   const [f4Config, setF4Config] = useState({
@@ -88,7 +88,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     gapY: 8,
   });
 
-  const [printContent, setPrintContent] = useState('');
   const [currentUser, setCurrentUser] = useState<any | null>(null);
   const [userRole, setUserRole] = useState<Role | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -318,19 +317,58 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const saveOperator = (o: Operator) => saveEntity('operators', o.id, o);
   const deleteOperator = (id: string) => deleteEntity('operators', id);
   const saveTagihanPeriod = (p: TagihanPeriod) => saveEntity('tagihanPeriods', p.id, p);
-  const deleteTagihanPeriod = (id: string) => deleteEntity('tagihanPeriods', id);
+  const deleteTagihanPeriod = async (id: string) => {
+    try {
+      console.log(`Deleting tagihan period: ${id}`);
+      
+      // First, get all details
+      const q = query(collection(db, 'tagihanDetails'), where('periodId', '==', id));
+      const snap = await getDocs(q);
+      console.log(`Found ${snap.size} details to delete for period ${id}`);
+
+      // Delete details in chunks of 500 (Firestore batch limit)
+      const detailsRefs = snap.docs.map(d => d.ref);
+      for (let i = 0; i < detailsRefs.length; i += 500) {
+        const batch = writeBatch(db);
+        const chunk = detailsRefs.slice(i, i + 500);
+        chunk.forEach(ref => batch.delete(ref));
+        await batch.commit();
+        console.log(`Deleted chunk ${i/500 + 1} of details`);
+      }
+
+      // Finally delete the period document
+      await deleteDoc(doc(db, 'tagihanPeriods', id));
+      
+      console.log(`Successfully deleted period ${id} and all its details`);
+    } catch (e) {
+      console.error('Error in deleteTagihanPeriod:', e);
+      handleFirestoreErrorLocal(e, OperationType.DELETE, `tagihanPeriod/${id}`);
+      throw e;
+    }
+  };
   const saveTagihanDetail = (d: TagihanDetail) => saveEntity('tagihanDetails', d.id, d);
 
   const saveTagihanBatch = async (period: TagihanPeriod, details: TagihanDetail[]) => {
-    const { writeBatch } = await import('firebase/firestore');
-    const batch = writeBatch(db);
-    
-    batch.set(doc(db, 'tagihanPeriods', period.id), period);
-    details.forEach(d => batch.set(doc(db, 'tagihanDetails', d.id), d));
-    
     try {
-      await batch.commit();
+      console.log(`Saving tagihan batch for period: ${period.id}, total details: ${details.length}`);
+      
+      // Save period document first
+      await setDoc(doc(db, 'tagihanPeriods', period.id), period);
+
+      // Save details in chunks of 500
+      for (let i = 0; i < details.length; i += 499) { // 499 to be safe with the period if we were doing it in one batch
+        const batch = writeBatch(db);
+        const chunk = details.slice(i, i + 499);
+        chunk.forEach(d => {
+          batch.set(doc(db, 'tagihanDetails', d.id), d);
+        });
+        await batch.commit();
+        console.log(`Saved details chunk ${Math.floor(i/499) + 1}`);
+      }
+      
+      console.log('Batch save completed successfully');
     } catch (e) {
+      console.error('Error in saveTagihanBatch:', e);
       handleFirestoreErrorLocal(e, OperationType.WRITE, 'tagihanBatch');
       throw e;
     }
@@ -374,7 +412,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       f4Template, setF4Template,
       f4Config, setF4Config,
       savePrintSettings,
-      printContent, setPrintContent,
       showToast,
       logout,
       savePelanggan, deletePelanggan,

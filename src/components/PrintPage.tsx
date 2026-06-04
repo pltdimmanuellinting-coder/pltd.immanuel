@@ -1,15 +1,20 @@
 import React, { useState } from 'react';
-import { ChevronLeft, Printer, FileDown, Smartphone, Calendar, FileText } from 'lucide-react';
+import { ChevronLeft, Printer, FileDown, Smartphone, Calendar, FileText, Loader2 } from 'lucide-react';
 import { TagihanDetail } from '../types';
 import { useAppContext } from '../context/AppContext';
 import PageHeader from './PageHeader';
+// @ts-ignore
+import html2pdf from 'html2pdf.js';
 
 export default function PrintPage({ onBack }: { onBack: () => void }) {
-  const { tagihanPeriods, f4Template, f4Config, setPrintContent, appSettings, tagihanDetails } = useAppContext();
+  const { tagihanPeriods, f4Template, f4Config, appSettings, tagihanDetails, showToast, pelanggans, tarifs } = useAppContext();
   
   const [printType, setPrintType] = useState<'f4' | 'thermal'>('f4');
   const [selectedPeriodId, setSelectedPeriodId] = useState('');
   const [pageRange, setPageRange] = useState('');
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [pdfRenderHtml, setPdfRenderHtml] = useState('');
+  const printRef = React.useRef<HTMLDivElement>(null);
 
   const details = tagihanDetails.filter(d => d.periodId === selectedPeriodId);
 
@@ -21,88 +26,115 @@ export default function PrintPage({ onBack }: { onBack: () => void }) {
   const selectedPeriod = tagihanPeriods.find(p => p.id === selectedPeriodId);
   const selectedCount = details.length;
 
-  const handlePrintF4 = () => {
+  const handlePrintF4 = async () => {
     if (!selectedPeriodId) return alert('Pilih periode tagihan terlebih dahulu');
+    if (details.length === 0) return alert('Tidak ada data tagihan pada periode ini');
     
-    const template = f4Template || `<div style="padding: 15px; font-family: 'Inter', system-ui, sans-serif; font-size: 11px; border: 1.5px solid #0000ff; border-radius: 12px; height: 100%; box-sizing: border-box; display: flex; flex-direction: column; background-color: #ffffff; color: #1e293b; position: relative; overflow: hidden;">
-  <div style="position: relative; z-index: 1; height: 100%; display: flex; flex-direction: column;">
-    <div style="display: flex; align-items: center; gap: 15px; border-bottom: 2px solid #0000ff; padding-bottom: 10px; margin-bottom: 12px;">
-      <div style="width: 50px; height: 50px; background: #f1f5f9; border-radius: 8px; display: flex; items-center; justify-content: center; overflow: hidden; border: 1px solid #e2e8f0;">
-        <img src="{{app_logo}}" style="width: 100%; height: 100%; object-fit: contain;" onerror="this.style.display='none'" />
+    setIsGeneratingPdf(true);
+    
+    try {
+      let template = f4Template;
+      const defaultFallback = `<div style="padding: 15px; font-family: 'Inter', system-ui, sans-serif; font-size: 11px; border: 1px solid #cbd5e1; border-radius: 12px; height: 100%; box-sizing: border-box; display: flex; flex-direction: column; background-color: #ffffff; color: #1e293b; position: relative; overflow: hidden; box-shadow: inset 0 0 0 3px #f8fafc;">
+  <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 2px dashed #cbd5e1; padding-bottom: 12px; margin-bottom: 12px; width: 100%;">
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <div style="width: 44px; height: 44px; background: #f8fafc; border-radius: 10px; display: flex; align-items: center; justify-content: center; overflow: hidden; border: 1px solid #e2e8f0;">
+        <img src="{{app_logo}}" style="width: 100%; height: 100%; object-fit: contain;" />
       </div>
-      <div style="text-align: left; flex: 1;">
-        <strong style="color: #0000ff; font-size: 22px; line-height: 1; letter-spacing: 1px; text-transform: uppercase; display: block; margin-bottom: 2px;">{{app_name}}</strong>
-        <span style="font-size: 11px; color: #475569; font-weight: bold; display: block;">{{app_address}}</span>
-      </div>
-      <div style="text-align: right; background: #0000ff; color: white; padding: 5px 12px; border-radius: 6px; font-size: 10px; font-weight: 800; letter-spacing: 1px; flex-shrink: 0;">
-        SLIP TAGIHAN
+      <div>
+        <strong style="color: #0f172a; font-size: 16px; font-weight: 900; line-height: 1.2; letter-spacing: -0.5px; text-transform: uppercase; display: block;">{{app_name}}</strong>
+        <span style="font-size: 10px; color: #64748b; font-weight: 500; display: block; max-width: 150px; line-height: 1.2;">{{app_address}}</span>
       </div>
     </div>
-    
-    <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 15px;">
-      <div style="display: flex; flex-direction: column; gap: 10px;">
-        <div style="background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0;">
-          <div style="color: #64748b; font-size: 9px; font-weight: 800; text-transform: uppercase; margin-bottom: 4px; letter-spacing: 0.5px;">Informasi Pelanggan</div>
-          <strong style="font-size: 14px; color: #0000ff; display: block; margin-bottom: 2px;">{{pelanggan_name}}</strong>
-          <span style="font-size: 10px; color: #64748b; font-family: monospace;">ID: #{{pelanggan_id}}</span>
-        </div>
-        
-        <div style="font-size: 10px; color: #64748b; display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-           <div style="background: #eff6ff; padding: 6px; border-radius: 6px; border: 1px solid #dbeafe;">
-             <span style="display: block; font-size: 8px; font-weight: 800;">USERNAME</span>
-             <strong style="color: #1e40af;">{{pelanggan_username}}</strong>
-           </div>
-           <div style="background: #eff6ff; padding: 6px; border-radius: 6px; border: 1px solid #dbeafe;">
-             <span style="display: block; font-size: 8px; font-weight: 800;">PASSWORD</span>
-             <strong style="color: #1e40af;">{{pelanggan_password}}</strong>
-           </div>
-        </div>
+    <div style="text-align: right;">
+      <div style="background: #2563eb; color: white; padding: 4px 10px; border-radius: 20px; font-size: 9px; font-weight: 700; display: inline-block; margin-bottom: 4px; box-shadow: 0 2px 4px rgba(37,99,235,0.2);">TAGIHAN LISTRIK</div>
+      <div style="font-size: 10px; color: #64748b; font-weight: 800; display: block;">{{bulan_tagihan}}</div>
+    </div>
+  </div>
+  <div style="display: flex; gap: 16px; flex: 1; width: 100%;">
+    <div style="flex: 1.1; display: flex; flex-direction: column; gap: 12px;">
+      <div style="background: #f8fafc; padding: 12px; border-radius: 10px; border: 1px solid #f1f5f9; position: relative;">
+        <div style="position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: #2563eb;"></div>
+        <div style="color: #64748b; font-size: 9px; font-weight: 700; text-transform: uppercase; margin-bottom: 2px;">Data Pelanggan</div>
+        <strong style="font-size: 14px; font-weight: 800; color: #0f172a; display: block;">{{pelanggan_name}}</strong>
+        <span style="font-size: 10px; color: #64748b; font-family: monospace; font-weight: 600;">ID: {{pelanggan_id}}</span>
       </div>
-      
-      <div style="display: flex; flex-direction: column;">
-        <table style="width: 100%; font-size: 11px; border-collapse: collapse;">
-          <tr style="border-bottom: 1px solid #f1f5f9;"><td style="color: #64748b; padding: 4px 0;">Bulan</td><td style="text-align: right; font-weight: 900; color: #0000ff;">{{bulan_tagihan}}</td></tr>
-          <tr style="border-bottom: 1px solid #f1f5f9;"><td style="color: #64748b; padding: 4px 0;">Rentang</td><td style="text-align: right; font-weight: 900; color: #0000ff;">{{rentang_tagihan}}</td></tr>
-          <tr style="border-bottom: 1px solid #f1f5f9;"><td style="color: #64748b; padding: 4px 0;">Tarif</td><td style="text-align: right; font-weight: 900; color: #0000ff;">{{tarif_name}}</td></tr>
-          <tr style="border-bottom: 1px solid #f1f5f9;"><td style="color: #64748b; padding: 4px 0;">Pemakaian</td><td style="text-align: right; font-weight: 900; color: #0000ff;">{{pemakaian_malam}} Malam</td></tr>
+      <div style="display: flex; gap: 6px; width: 100%;">
+         <div style="flex: 1; background: #ffffff; padding: 8px; border-radius: 8px; border: 1.5px solid #e2e8f0;">
+           <span style="display: block; font-size: 8px; font-weight: 700; color: #64748b; margin-bottom: 2px;">USERNAME</span>
+           <strong style="color: #0f172a; font-family: monospace; font-size: 10px;">{{pelanggan_username}}</strong>
+         </div>
+         <div style="flex: 1; background: #ffffff; padding: 8px; border-radius: 8px; border: 1.5px solid #e2e8f0;">
+           <span style="display: block; font-size: 8px; font-weight: 700; color: #64748b; margin-bottom: 2px;">PASSWORD</span>
+           <strong style="color: #0f172a; font-family: monospace; font-size: 10px;">{{pelanggan_password}}</strong>
+         </div>
+      </div>
+    </div>
+    <div style="flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
+      <div style="background: #ffffff; border-radius: 10px; padding: 0;">
+        <table style="width: 100%; border-collapse: collapse;">
+          <tr style="border-bottom: 1px solid #f1f5f9;"><td style="color: #64748b; font-size: 10px; padding: 4px 0; font-weight: 600;">Jalur</td><td style="text-align: right; font-size: 11px; font-weight: 800; color: #0f172a;">{{jalur_name}}</td></tr>
+          <tr style="border-bottom: 1px solid #f1f5f9;"><td style="color: #64748b; font-size: 10px; padding: 4px 0; font-weight: 600;">Tarif Daya</td><td style="text-align: right; font-size: 11px; font-weight: 800; color: #0f172a;">{{tarif_name}}</td></tr>
+          <tr style="border-bottom: 1px solid #f1f5f9;"><td style="color: #64748b; font-size: 10px; padding: 4px 0; font-weight: 600;">MCB</td><td style="text-align: right; font-size: 11px; font-weight: 800; color: #0f172a;">{{mcb}}</td></tr>
+          <tr style="border-bottom: 1px solid #f1f5f9;"><td style="color: #64748b; font-size: 10px; padding: 4px 0; font-weight: 600;">Total Tgl</td><td style="text-align: right; font-size: 11px; font-weight: 800; color: #0f172a;">{{total_hari_sebulan}} Hari</td></tr>
+          <tr style="border-bottom: 1px solid #f1f5f9;"><td style="color: #64748b; font-size: 10px; padding: 4px 0; font-weight: 600;">Mati Listrik</td><td style="text-align: right; font-size: 11px; font-weight: 800; color: #0f172a;">{{hari_mati_listrik}} Hari</td></tr>
+          <tr style="border-bottom: 1px solid #f1f5f9;"><td style="color: #64748b; font-size: 10px; padding: 4px 0; font-weight: 600;">Hidup Listrik</td><td style="text-align: right; font-size: 11px; font-weight: 800; color: #0f172a;">{{pemakaian_malam}} Malam</td></tr>
+          <tr style="border-bottom: 1px solid #f1f5f9;"><td style="color: #64748b; font-size: 10px; padding: 4px 0; font-weight: 600;">Tunggakan</td><td style="text-align: right; font-size: 10px; font-weight: 700; color: #ef4444;">{{tunggakan}}</td></tr>
+          <tr><td style="color: #64748b; font-size: 10px; padding: 4px 0; font-weight: 600;">Periode</td><td style="text-align: right; font-size: 10px; font-weight: 700; color: #0f172a;">{{rentang_tagihan}}</td></tr>
         </table>
-        <div style="margin-top: 8px; background: #ffffff; border: 2px solid #0000ff; padding: 8px 12px; border-radius: 10px; text-align: right;">
-          <span style="font-size: 9px; font-weight: 800; color: #64748b; display: block; text-transform: uppercase; margin-bottom: 2px;">Total Tagihan</span>
-          <strong style="font-size: 18px; color: #0000ff; letter-spacing: 1px;">Rp {{total_tagihan}}</strong>
-        </div>
       </div>
-    </div>
-
-    <!-- Footer Area: Kolektor & WA -->
-    <div style="margin-top: auto; display: flex; justify-content: space-between; align-items: flex-end; padding-top: 10px;">
-      <div style="text-align: left;">
-        <div style="margin-bottom: 35px;">
-          <span style="font-size: 10px; font-weight: 900; color: #0000ff; display: block; margin-bottom: 2px;">Kolektor</span>
-          <span style="font-size: 9px; color: #94a3b8;">TtD</span>
+      <div style="background: #0f172a; border-radius: 10px; padding: 12px; margin-top: auto; color: white; display: flex; flex-direction: column; align-items: flex-end;">
+        <span style="font-size: 9px; font-weight: 600; color: #94a3b8; text-transform: uppercase;">Total Tagihan</span>
+        <div style="display: flex; align-items: flex-start; gap: 4px; margin-top: 2px;">
+          <span style="font-size: 10px; font-weight: 600; color: #94a3b8; margin-top: 2px;">Rp</span>
+          <strong style="font-size: 20px; font-weight: 800; letter-spacing: -0.5px; line-height: 1;">{{total_tagihan}}</strong>
         </div>
-        <strong style="font-size: 12px; color: #0000ff; text-decoration: underline;">{{kolektor_name}}</strong>
-        <div style="margin-top: 12px; display: flex; items-center; gap: 4px; color: #0000ff; font-weight: 900; font-size: 10px;">
-          <span style="background: #0000ff; color: white; padding: 1px 4px; border-radius: 3px; font-size: 8px;">WA</span>
-          085179911407
-        </div>
-      </div>
-      <div style="text-align: right; color: #94a3b8; font-size: 8px; font-style: italic; font-weight: 500;">
-        Dicetak pada: {{tgl_cetak}}
       </div>
     </div>
   </div>
+  <div style="margin-top: 12px; border-top: 1px solid #f1f5f9; padding-top: 10px; display: flex; justify-content: space-between; align-items: flex-end; width: 100%;">
+    <div>
+      <span style="font-size: 8px; font-weight: 800; color: #64748b; display: block; text-transform: uppercase;">Kolektor / Petugas</span>
+      <strong style="font-size: 11px; color: #0f172a; font-weight: 900; display: block; margin-top: 2px;">{{kolektor_name}}</strong>
+    </div>
+    <div style="text-align: right; font-size: 8px; color: #94a3b8; font-weight: 600;">
+      <div style="margin-bottom: 2px;"><span style="color: #0f172a; font-weight: 800;">WA: {{app_contact}}</span></div>
+      Cetak: {{tgl_cetak}}
+    </div>
+  </div>
 </div>`;
+      if (!template || !template.includes('{{tunggakan}}')) {
+         template = defaultFallback;
+      }
     
-    // Preparation for F4 Landscape Grid (2 columns x 2 rows = 4 slips per page)
+    let htmlContent = `<div id="pdf-content">`;
     const slipsPerPage = 4;
-    let fullHtml = '';
-    
+
     for (let i = 0; i < details.length; i += slipsPerPage) {
       const pageDetails = details.slice(i, i + slipsPerPage);
-      let pageHtml = `<div style="width: ${f4Config.paperWidth}mm; height: ${f4Config.paperHeight}mm; position: relative; page-break-after: always; box-sizing: border-box; padding: ${f4Config.marginTop}mm;">`;
+      
+      let pageHtml = `<div style="width: ${f4Config.paperWidth}mm; height: ${f4Config.paperHeight - 1}mm; position: relative; background: #ffffff; overflow: hidden; display: block; box-sizing: border-box;">`;
       
       pageDetails.forEach((d, idx) => {
         let slipHtml = template;
+        
+        let mcbVal = '-';
+        const pel = pelanggans.find(p => p.id === d.pelangganId);
+        if (pel) {
+           const tar = tarifs.find(t => t.id === pel.tarifId);
+           if (tar && tar.mcb) mcbVal = tar.mcb;
+        }
+
+        // Hitung Tunggakan
+        let tunggakan = 0;
+        const previousTagihans = tagihanDetails.filter(td => 
+          td.pelangganId === d.pelangganId && 
+          td.id !== d.id && 
+          td.status === 'Belum Lunas'
+        );
+        
+        // Sorting untuk mendapatkan tagihan lama sebelum period ini, asumsikan period name sortable or use ID (simple way: sum all "Belum Lunas" except current)
+        tunggakan = previousTagihans.reduce((sum, td) => sum + td.totalTagihan, 0);
+
         slipHtml = slipHtml.replace(/\{\{pelanggan_name\}\}/g, d.snapshotPelangganName);
         slipHtml = slipHtml.replace(/\{\{pelanggan_id\}\}/g, d.pelangganId);
         slipHtml = slipHtml.replace(/\{\{pelanggan_username\}\}/g, d.snapshotPelangganUsername || '');
@@ -110,16 +142,21 @@ export default function PrintPage({ onBack }: { onBack: () => void }) {
         slipHtml = slipHtml.replace(/\{\{app_logo\}\}/g, appSettings.logo || '');
         slipHtml = slipHtml.replace(/\{\{app_name\}\}/g, appSettings.appName);
         slipHtml = slipHtml.replace(/\{\{app_address\}\}/g, appSettings.address);
+        slipHtml = slipHtml.replace(/\{\{app_contact\}\}/g, appSettings.appContact || '-');
+        slipHtml = slipHtml.replace(/\{\{mcb\}\}/g, mcbVal);
         slipHtml = slipHtml.replace(/\{\{tgl_cetak\}\}/g, new Date().toLocaleDateString('id-ID'));
         slipHtml = slipHtml.replace(/\{\{bulan_tagihan\}\}/g, `${months[selectedPeriod?.month || 0]} ${selectedPeriod?.year}`);
         const rentang = `5 ${months[((selectedPeriod?.month ?? 0) + 11) % 12].substring(0,3)} - 4 ${months[selectedPeriod?.month || 0].substring(0,3)}`;
         slipHtml = slipHtml.replace(/\{\{rentang_tagihan\}\}/g, rentang);
-        slipHtml = slipHtml.replace(/\{\{tarif_name\}\}/g, d.snapshotTarifName);
+        slipHtml = slipHtml.replace(/\{\{jalur_name\}\}/g, d.snapshotJalurName || '-');
+        slipHtml = slipHtml.replace(/\{\{tarif_name\}\}/g, `Rp. ${d.snapshotTarifPrice.toLocaleString('id-ID')},- (${d.snapshotTarifName})`);
+        slipHtml = slipHtml.replace(/\{\{total_hari_sebulan\}\}/g, d.totalHariSebulan?.toString() || '0');
+        slipHtml = slipHtml.replace(/\{\{hari_mati_listrik\}\}/g, d.hariMatiListrik?.toString() || '0');
         slipHtml = slipHtml.replace(/\{\{pemakaian_malam\}\}/g, d.pemakaianHari.toString());
+        slipHtml = slipHtml.replace(/\{\{tunggakan\}\}/g, `Rp ${tunggakan.toLocaleString('id-ID')}`);
         slipHtml = slipHtml.replace(/\{\{kolektor_name\}\}/g, d.kolektorName || 'Semua'); 
-        slipHtml = slipHtml.replace(/\{\{total_tagihan\}\}/g, d.totalTagihan.toLocaleString('id-ID'));
+        slipHtml = slipHtml.replace(/\{\{total_tagihan\}\}/g, (d.totalTagihan + tunggakan).toLocaleString('id-ID'));
         
-        // Positioning for 2x2 grid
         const row = Math.floor(idx / 2);
         const col = idx % 2;
         const width = (f4Config.paperWidth - f4Config.marginLeft - f4Config.marginRight - f4Config.gapX) / 2;
@@ -127,30 +164,75 @@ export default function PrintPage({ onBack }: { onBack: () => void }) {
         const top = f4Config.marginTop + (row * (height + f4Config.gapY));
         const left = f4Config.marginLeft + (col * (width + f4Config.gapX));
         
-        pageHtml += `<div style="position: absolute; width: ${width}mm; height: ${height}mm; top: ${top}mm; left: ${left}mm;">${slipHtml}</div>`;
+        pageHtml += `<div style="position: absolute; width: ${width}mm; height: ${height}mm; top: ${top}mm; left: ${left}mm; box-sizing: border-box;">${slipHtml}</div>`;
       });
       
-      // Add cutting lines
       pageHtml += `
-        <div style="position: absolute; top: 50%; left: ${f4Config.marginLeft}mm; width: calc(100% - ${f4Config.marginLeft + f4Config.marginRight}mm); border-top: 1px dashed #aaa; z-index: 0; pointer-events: none;"></div>
-        <div style="position: absolute; left: 50%; top: ${f4Config.marginTop}mm; height: calc(100% - ${f4Config.marginTop + f4Config.marginBottom}mm); border-left: 1px dashed #aaa; z-index: 0; pointer-events: none;"></div>
+        <div style="position: absolute; top: 50%; left: ${f4Config.marginLeft}mm; width: calc(100% - ${f4Config.marginLeft + f4Config.marginRight}mm); border-top: 1.5px dashed #94a3b8; display: flex; justify-content: center;">
+           <span style="background: white; padding: 0 10px; color: #94a3b8; font-size: 10px; margin-top: -7px;">✂️ Gunting disini</span>
+        </div>
+        <div style="position: absolute; left: 50%; top: ${f4Config.marginTop}mm; height: calc(100% - ${f4Config.marginTop + f4Config.marginBottom}mm); border-left: 1.5px dashed #94a3b8; display: flex; flex-direction: column; align-items: center;">
+           <div style="background: white; padding: 10px 0; color: #94a3b8; font-size: 10px; margin-left: -6.5px; transform: rotate(-90deg); margin-top: 50px;">✂️</div>
+        </div>
       `;
       
       pageHtml += `</div>`;
-      fullHtml += pageHtml;
+      if (i + slipsPerPage < details.length) {
+         pageHtml += `<div class="html2pdf__page-break"></div>`;
+      }
+      htmlContent += pageHtml;
     }
     
-    setPrintContent(fullHtml);
-    setTimeout(() => {
-      window.print();
-    }, 500);
-  };
+    htmlContent += `</div>`;
+
+    setPdfRenderHtml(htmlContent);
+
+    setTimeout(async () => {
+      if (!printRef.current) return;
+      
+      const opt = {
+        margin: 0,
+        filename: `Tagihan_${months[selectedPeriod?.month || 0]}_${selectedPeriod?.year}.pdf`,
+        image: { type: 'jpeg' as const, quality: 0.98 },
+        pagebreak: { mode: ['css'] },
+        html2canvas: { 
+          scale: 2, 
+          useCORS: true, 
+          logging: false,
+          letterRendering: true,
+          backgroundColor: '#ffffff',
+          windowWidth: Math.max(1200, f4Config.paperWidth * 4) // Ensure canvas bounds are wide enough
+        },
+        jsPDF: { 
+          unit: 'mm', 
+          format: [f4Config.paperWidth, f4Config.paperHeight] as [number, number], 
+          orientation: (f4Config.paperWidth > f4Config.paperHeight ? 'landscape' : 'portrait') as 'landscape' | 'portrait'
+        }
+      };
+
+      try {
+        await html2pdf().from(printRef.current).set(opt).save();
+        showToast('PDF berhasil diunduh');
+      } catch (error) {
+        console.error('PDF Generation failed:', error);
+        showToast('Gagal membuat PDF', 'error');
+      } finally {
+        setIsGeneratingPdf(false);
+      }
+    }, 1500);
+
+  } catch (err) {
+    console.error('PDF preparation failed:', err);
+    showToast('Terjadi kesalahan saat menyiapkan data PDF', 'error');
+    setIsGeneratingPdf(false);
+  }
+};
 
   const handlePrintThermal = () => {
     if (!selectedPeriodId) return alert('Pilih periode tagihan terlebih dahulu');
     
     const rentang = `5 ${months[((selectedPeriod?.month ?? 0) + 11) % 12].substring(0,3)} - 4 ${months[selectedPeriod?.month || 0].substring(0,3)}`;
-    let printText = `${appSettings.appName}\n${appSettings.address}\nWA: 085179911407\nTagihan ${months[selectedPeriod?.month || 0]} ${selectedPeriod?.year}\nPeriod: ${rentang}\n------------------------\n`;
+    let printText = `${appSettings.appName}\n${appSettings.address}\nWA: ${appSettings.appContact || '-'}\nTagihan ${months[selectedPeriod?.month || 0]} ${selectedPeriod?.year}\nPeriod: ${rentang}\n------------------------\n`;
     const toPrint = details.slice(0, 3); // mock just a few
     toPrint.forEach(d => {
       printText += `Nama: ${d.snapshotPelangganName}\nTotal: Rp ${d.totalTagihan.toLocaleString('id-ID')}\n------------------------\n`;
@@ -239,11 +321,16 @@ export default function PrintPage({ onBack }: { onBack: () => void }) {
         {/* Action Button */}
         <button 
           onClick={printType === 'f4' ? handlePrintF4 : handlePrintThermal}
-          className="w-full bg-[#0000ff] hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-blue-200 flex items-center justify-center gap-2 transition-transform active:scale-95"
+          disabled={isGeneratingPdf}
+          className={`w-full text-white font-bold py-4 rounded-xl shadow-lg flex items-center justify-center gap-2 transition-transform active:scale-95 ${isGeneratingPdf ? 'bg-slate-400 cursor-not-allowed' : 'bg-[#0000ff] hover:bg-blue-700 shadow-blue-200'}`}
         >
-          {printType === 'f4' ? (
+          {isGeneratingPdf ? (
             <>
-              <FileText size={20} /> CETAK KE PDF (F4)
+              <Loader2 size={20} className="animate-spin" /> MENGHADILKAN PDF...
+            </>
+          ) : printType === 'f4' ? (
+            <>
+              <FileText size={20} /> UNDUH PDF TAGIHAN (F4)
             </>
           ) : (
             <>
@@ -252,6 +339,23 @@ export default function PrintPage({ onBack }: { onBack: () => void }) {
           )}
         </button>
       </div>
+
+      {/* Hidden container for PDF rendering */}
+      <div 
+        style={{
+          position: 'absolute',
+          top: '-9999px',
+          left: '-9999px',
+          width: `${f4Config.paperWidth}mm`,
+          opacity: 0,
+          pointerEvents: 'none',
+          overflow: 'hidden'
+        }}
+        aria-hidden="true"
+      >
+        <div ref={printRef} dangerouslySetInnerHTML={{ __html: pdfRenderHtml }} />
+      </div>
+
     </div>
   );
 }

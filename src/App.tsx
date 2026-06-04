@@ -20,7 +20,7 @@ export default function App() {
   const { 
     appSettings, setAppSettings, saveAppSettings, pelanggans, kolektors, operators, showToast,
     userRole: role,
-    currentUser, isLoading, printContent, seedInitialData,
+    currentUser, isLoading, seedInitialData,
     setUserRole, setCurrentUser, logout
   } = useAppContext();
   
@@ -133,7 +133,7 @@ export default function App() {
               <div className="mt-auto p-6 pb-2 text-left">
                 <div className="flex items-center gap-2 text-[#0000ff] font-black text-xs">
                   <span className="bg-[#0000ff] text-white px-1.5 py-0.5 rounded text-[8px]">WA</span>
-                  085179911407
+                  {appSettings.appContact || '-'}
                 </div>
               </div>
             </div>
@@ -206,6 +206,15 @@ export default function App() {
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-700 outline-none focus:border-blue-500 transition-all" 
                       value={appSettings.address} 
                       onChange={(e) => setAppSettings(prev => ({ ...prev, address: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-500 font-bold mb-1 block">Nomor Contact</label>
+                    <input 
+                      type="text" 
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-700 outline-none focus:border-blue-500 transition-all" 
+                      value={appSettings.appContact || ''} 
+                      onChange={(e) => setAppSettings(prev => ({ ...prev, appContact: e.target.value }))}
                     />
                   </div>
                   <button 
@@ -377,8 +386,6 @@ export default function App() {
         </nav>
       </div>
 
-      {/* Global Print Container */}
-      <div id="print-container" dangerouslySetInnerHTML={{ __html: printContent }} />
     </div>
   );
 }

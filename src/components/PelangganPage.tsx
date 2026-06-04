@@ -315,6 +315,7 @@ export default function PelangganPage({ onBack }: { onBack: () => void }) {
                   {activeTab === 'tarif' && (
                     <>
                       <div><label className="text-[10px] text-slate-400 uppercase font-bold block mb-1">Nama Tarif</label><div className="font-semibold text-slate-800 bg-slate-50 p-2 rounded-lg border border-slate-100">{modal.data.name}</div></div>
+                      <div><label className="text-[10px] text-slate-400 uppercase font-bold block mb-1">MCB</label><div className="font-semibold text-slate-800 bg-slate-50 p-2 rounded-lg border border-slate-100">{modal.data.mcb || '-'}</div></div>
                       <div><label className="text-[10px] text-slate-400 uppercase font-bold block mb-1">Harga</label><div className="font-semibold text-slate-800 bg-slate-50 p-2 rounded-lg border border-slate-100">Rp {modal.data.price?.toLocaleString('id-ID')}</div></div>
                     </>
                   )}
@@ -388,6 +389,10 @@ export default function PelangganPage({ onBack }: { onBack: () => void }) {
                       <div>
                         <label className="text-xs text-slate-500 font-bold mb-1 block">Nama Tarif</label>
                         <input required value={modal.data.name || ''} onChange={(e) => setModal({...modal, data: {...modal.data, name: e.target.value}})} className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all font-medium" />
+                      </div>
+                      <div>
+                        <label className="text-xs text-slate-500 font-bold mb-1 block">Data MCB</label>
+                        <input value={modal.data.mcb || ''} onChange={(e) => setModal({...modal, data: {...modal.data, mcb: e.target.value}})} placeholder="Contoh: 2A, 4A, 6A" className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all font-medium" />
                       </div>
                       <div>
                         <label className="text-xs text-slate-500 font-bold mb-1 block">Harga (Rp)</label>

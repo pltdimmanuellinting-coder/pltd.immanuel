@@ -11,6 +11,7 @@ export type Operator = {
 export type Tarif = {
   id: string;
   name: string;
+  mcb?: string;
   price: number;
   createdAt?: number;
 };
