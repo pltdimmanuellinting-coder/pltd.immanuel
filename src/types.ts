@@ -92,6 +92,6 @@ export const initialKolektors: Kolektor[] = [
 ];
 
 export const initialPelanggans: Pelanggan[] = [
-  { id: 'p1', name: 'Budi Santoso', jalurId: 'j1', tarifId: 't1', username: 'budi', password: 'password123' },
-  { id: 'p2', name: 'Siti Aminah', jalurId: 'j5', tarifId: 't3', username: 'siti', password: 'password123' },
+  { id: 'p1', name: 'Budi Santoso', jalurId: 'j1', tarifId: 't1', status: 'Aktif', username: 'budi', password: 'password123' },
+  { id: 'p2', name: 'Siti Aminah', jalurId: 'j5', tarifId: 't3', status: 'Aktif', username: 'siti', password: 'password123' },
 ];

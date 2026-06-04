@@ -48,36 +48,38 @@ export default function PelangganPage({ onBack }: { onBack: () => void }) {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     const isAdd = modal.mode === 'add';
-    const data = modal.data;
+    const data = { ...modal.data }; // Clone to avoid direct mutation issues
     
-    if (activeTab === 'pelanggan') {
-      if (isAdd) {
-        data.id = generatePelangganId();
-        const baseUsername = data.name ? data.name.toLowerCase().replace(/[^a-z0-9]/g, '') : 'user';
-        if (!data.username) data.username = `${baseUsername}@pelanggan`;
-        if (!data.password) data.password = Math.floor(1000 + Math.random() * 9000).toString();
+    try {
+      if (activeTab === 'pelanggan') {
+        if (isAdd) {
+          data.id = generatePelangganId();
+          const baseUsername = data.name ? data.name.toLowerCase().replace(/[^a-z0-9]/g, '') : 'user';
+          if (!data.username) data.username = `${baseUsername}@pelanggan`;
+          if (!data.password) data.password = Math.floor(1000 + Math.random() * 9000).toString();
+        }
+        await savePelanggan(data as Pelanggan);
+      } else if (activeTab === 'tarif') {
+        if (isAdd) data.id = 't' + Date.now();
+        await saveTarif(data as Tarif);
+      } else if (activeTab === 'jalur') {
+        if (isAdd) data.id = 'j' + Date.now();
+        await saveJalur(data as Jalur);
+      } else if (activeTab === 'kolektor') {
+         if (isAdd) {
+           data.id = 'k' + Date.now();
+           const baseUsername = data.name ? data.name.toLowerCase().replace(/[^a-z0-9]/g, '') : 'kolektor';
+           if (!data.username) data.username = `${baseUsername}@kolektor`;
+           if (!data.password) data.password = Math.floor(1000 + Math.random() * 9000).toString();
+         }
+         await saveKolektor(data as Kolektor);
       }
-      await savePelanggan(data as Pelanggan);
+      showToast(`Data berhasil ${isAdd ? 'ditambahkan' : 'diperbarui'}`);
+      closeModal();
+    } catch (err) {
+      console.error('Failed to save:', err);
+      showToast('Gagal menyimpan data ke database', 'error');
     }
-    if (activeTab === 'tarif') {
-      if (isAdd) data.id = 't' + Date.now();
-      await saveTarif(data as Tarif);
-    }
-    if (activeTab === 'jalur') {
-      if (isAdd) data.id = 'j' + Date.now();
-      await saveJalur(data as Jalur);
-    }
-    if (activeTab === 'kolektor') {
-       if (isAdd) {
-         data.id = 'k' + Date.now();
-         const baseUsername = data.name ? data.name.toLowerCase().replace(/[^a-z0-9]/g, '') : 'kolektor';
-         if (!data.username) data.username = `${baseUsername}@kolektor`;
-         if (!data.password) data.password = Math.floor(1000 + Math.random() * 9000).toString();
-       }
-       await saveKolektor(data as Kolektor);
-    }
-    showToast(`Data berhasil ${isAdd ? 'ditambahkan' : 'diperbarui'}`);
-    closeModal();
   };
 
   const sortedPelanggans = useMemo(() => {
@@ -158,80 +160,112 @@ export default function PelangganPage({ onBack }: { onBack: () => void }) {
       </div>
 
       {/* Content */}
-      <div className="p-4 space-y-4 pb-32">
-        {activeTab === 'pelanggan' && sortedPelanggans.map((p, index) => {
-          const t = tarifs.find(t => t.id === p.tarifId);
-          const j = jalurs.find(j => j.id === p.jalurId);
-          const active = p.status === 'Aktif';
-          return (
-            <div key={p.id} onClick={() => setModal({isOpen: true, mode: 'view', data: p})} className={`cursor-pointer bg-white rounded-2xl p-4 shadow-sm border border-slate-200 flex flex-col gap-2 relative overflow-hidden group hover:border-blue-300 transition-colors ${!active ? 'opacity-60 saturate-50' : ''}`}>
-              <div className={`absolute top-0 left-0 w-1 h-full transition-colors ${active ? 'bg-blue-500 group-hover:bg-blue-600' : 'bg-slate-400 group-hover:bg-slate-500'}`}></div>
-              <div className="absolute top-3 right-3 text-slate-200 font-black text-xl group-hover:text-blue-100 transition-colors">
-                #{index + 1}
-              </div>
-              <div className="flex justify-between items-start pl-2 pr-6">
-                <div>
-                  <h3 className="font-bold text-slate-800 text-sm leading-tight flex items-center gap-2">
-                    {p.name}
-                    {!active && <span className="bg-slate-100 text-slate-500 text-[10px] uppercase px-1.5 py-0.5 rounded font-black">Nonaktif</span>}
-                  </h3>
-                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wide mt-0.5">ID: {p.id}</p>
+      <div className="p-4 space-y-4 pb-32 flex-1 overflow-y-auto">
+        {activeTab === 'pelanggan' && (
+          sortedPelanggans.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 text-slate-400 gap-3">
+              <Users size={48} className="opacity-20" />
+              <p className="font-bold text-xs uppercase tracking-widest">Belum ada data pelanggan</p>
+              <button onClick={handleAdd} className="mt-2 text-blue-600 font-bold text-xs uppercase underline">Tambah Sekarang</button>
+            </div>
+          ) : sortedPelanggans.map((p, index) => {
+            const t = tarifs.find(t => t.id === p.tarifId);
+            const j = jalurs.find(j => j.id === p.jalurId);
+            const active = p.status === 'Aktif';
+            return (
+              <div key={p.id} onClick={() => setModal({isOpen: true, mode: 'view', data: p})} className={`cursor-pointer bg-white rounded-2xl p-4 shadow-sm border border-slate-200 flex flex-col gap-2 relative overflow-hidden group hover:border-blue-300 transition-colors ${!active ? 'opacity-60 saturate-50' : ''}`}>
+                <div className={`absolute top-0 left-0 w-1 h-full transition-colors ${active ? 'bg-blue-500 group-hover:bg-blue-600' : 'bg-slate-400 group-hover:bg-slate-500'}`}></div>
+                <div className="absolute top-3 right-3 text-slate-200 font-black text-xl group-hover:text-blue-100 transition-colors">
+                  #{index + 1}
                 </div>
-                <span className="bg-slate-100 text-slate-600 text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider">{j?.name}</span>
+                <div className="flex justify-between items-start pl-2 pr-6">
+                  <div>
+                    <h3 className="font-bold text-slate-800 text-sm leading-tight flex items-center gap-2">
+                      {p.name}
+                      {!active && <span className="bg-slate-100 text-slate-500 text-[10px] uppercase px-1.5 py-0.5 rounded font-black">Nonaktif</span>}
+                    </h3>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wide mt-0.5">ID: {p.id}</p>
+                  </div>
+                  <span className="bg-slate-100 text-slate-600 text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider">{j?.name || 'No Jalur'}</span>
+                </div>
+                <div className="px-2 text-xs text-slate-600 mb-1 line-clamp-1">{getCombinedAlamat(p, j)}</div>
+                <div className="bg-blue-50/50 rounded-xl p-3 text-sm flex justify-between items-center ml-2 border border-blue-100/50">
+                  <span className="text-slate-600 text-xs font-medium">{t?.name || 'No Tarif'}</span>
+                  <span className="font-bold text-blue-700 text-xs shadow-sm bg-white px-2 py-1 rounded-md border border-blue-100">Rp {(t?.price || 0).toLocaleString('id-ID')} / Malam</span>
+                </div>
               </div>
-              <div className="px-2 text-xs text-slate-600 mb-1 line-clamp-1">{getCombinedAlamat(p, j)}</div>
-              <div className="bg-blue-50/50 rounded-xl p-3 text-sm flex justify-between items-center ml-2 border border-blue-100/50">
-                <span className="text-slate-600 text-xs font-medium">{t?.name}</span>
-                <span className="font-bold text-blue-700 text-xs shadow-sm bg-white px-2 py-1 rounded-md border border-blue-100">Rp {(t?.price || 0).toLocaleString('id-ID')} / Malam</span>
-              </div>
-            </div>
-          );
-        })}
+            );
+          })
+        )}
 
-        {activeTab === 'tarif' && tarifs.map((t, index) => (
-          <div key={t.id} onClick={() => setModal({isOpen: true, mode: 'view', data: t})} className="cursor-pointer bg-white rounded-2xl p-4 shadow-sm border border-slate-200 flex justify-between items-center group hover:border-blue-300 transition-colors relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500 group-hover:bg-emerald-600 transition-colors"></div>
-            <div className="flex items-center gap-3 pl-2">
-              <span className="text-slate-200 font-black text-lg w-6 group-hover:text-emerald-100 transition-colors">#{index + 1}</span>
-              <h3 className="font-bold text-slate-800 text-sm">{t.name}</h3>
+        {activeTab === 'tarif' && (
+          tarifs.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 text-slate-400 gap-3">
+              <Wallet size={48} className="opacity-20" />
+              <p className="font-bold text-xs uppercase tracking-widest">Belum ada data tarif</p>
+              <button onClick={handleAdd} className="mt-2 text-blue-600 font-bold text-xs uppercase underline">Tambah Sekarang</button>
             </div>
-            <span className="font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-lg text-sm border border-blue-100">Rp {(t.price).toLocaleString('id-ID')}</span>
-          </div>
-        ))}
-
-        {activeTab === 'jalur' && jalurs.map((j, index) => (
-          <div key={j.id} onClick={() => setModal({isOpen: true, mode: 'view', data: j})} className="cursor-pointer bg-white rounded-2xl p-4 shadow-sm border border-slate-200 flex items-center justify-between group hover:border-blue-300 transition-colors relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-1 h-full bg-purple-500 group-hover:bg-purple-600 transition-colors"></div>
-            <div className="flex items-center gap-3 pl-2">
-              <span className="text-slate-200 font-black text-lg w-6 group-hover:text-purple-100 transition-colors">#{index + 1}</span>
-              <h3 className="font-bold text-slate-800 text-sm">{j.name}</h3>
-            </div>
-            <span className="text-xs text-slate-500 bg-slate-50 px-2 py-1 rounded-md font-medium uppercase border border-slate-200">ID: {j.id}</span>
-          </div>
-        ))}
-
-        {activeTab === 'kolektor' && kolektors.map((k, index) => (
-          <div key={k.id} onClick={() => setModal({isOpen: true, mode: 'view', data: k})} className="cursor-pointer bg-white rounded-2xl p-4 shadow-sm border border-slate-200 space-y-3 group hover:border-blue-300 transition-colors relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-1 h-full bg-orange-500 group-hover:bg-orange-600 transition-colors"></div>
-            <div className="absolute top-3 right-3 text-slate-200 font-black text-xl group-hover:text-orange-100 transition-colors">#{index + 1}</div>
-            <div className="pl-2">
-              <h3 className="font-bold text-slate-800 text-sm mb-2">{k.name}</h3>
-              <div className="flex flex-wrap gap-2 pr-6">
-                {(k.jalurIds || []).map(jid => {
-                  const jal = jalurs.find(j => j.id === jid);
-                  return (
-                    <span key={jid} className="bg-blue-50 border border-blue-100 text-blue-700 text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider">
-                      {jal?.name || jid}
-                    </span>
-                  );
-                })}
+          ) : tarifs.map((t, index) => (
+            <div key={t.id} onClick={() => setModal({isOpen: true, mode: 'view', data: t})} className="cursor-pointer bg-white rounded-2xl p-4 shadow-sm border border-slate-200 flex justify-between items-center group hover:border-blue-300 transition-colors relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500 group-hover:bg-emerald-600 transition-colors"></div>
+              <div className="flex items-center gap-3 pl-2">
+                <span className="text-slate-200 font-black text-lg w-6 group-hover:text-emerald-100 transition-colors">#{index + 1}</span>
+                <h3 className="font-bold text-slate-800 text-sm">{t.name}</h3>
               </div>
-              <div className="mt-2 text-[10px] text-slate-400 font-bold uppercase tracking-widest">
-                User: {k.username || '-'}
+              <span className="font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-lg text-sm border border-blue-100">Rp {(t.price).toLocaleString('id-ID')}</span>
+            </div>
+          ))
+        )}
+
+        {activeTab === 'jalur' && (
+          jalurs.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 text-slate-400 gap-3">
+              <Route size={48} className="opacity-20" />
+              <p className="font-bold text-xs uppercase tracking-widest">Belum ada data jalur</p>
+              <button onClick={handleAdd} className="mt-2 text-blue-600 font-bold text-xs uppercase underline">Tambah Sekarang</button>
+            </div>
+          ) : jalurs.map((j, index) => (
+            <div key={j.id} onClick={() => setModal({isOpen: true, mode: 'view', data: j})} className="cursor-pointer bg-white rounded-2xl p-4 shadow-sm border border-slate-200 flex items-center justify-between group hover:border-blue-300 transition-colors relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-1 h-full bg-purple-500 group-hover:bg-purple-600 transition-colors"></div>
+              <div className="flex items-center gap-3 pl-2">
+                <span className="text-slate-200 font-black text-lg w-6 group-hover:text-purple-100 transition-colors">#{index + 1}</span>
+                <h3 className="font-bold text-slate-800 text-sm">{j.name}</h3>
+              </div>
+              <span className="text-xs text-slate-500 bg-slate-50 px-2 py-1 rounded-md font-medium uppercase border border-slate-200">ID: {j.id}</span>
+            </div>
+          ))
+        )}
+
+        {activeTab === 'kolektor' && (
+          kolektors.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 text-slate-400 gap-3">
+              <UserSquare2 size={48} className="opacity-20" />
+              <p className="font-bold text-xs uppercase tracking-widest">Belum ada data kolektor</p>
+              <button onClick={handleAdd} className="mt-2 text-blue-600 font-bold text-xs uppercase underline">Tambah Sekarang</button>
+            </div>
+          ) : kolektors.map((k, index) => (
+            <div key={k.id} onClick={() => setModal({isOpen: true, mode: 'view', data: k})} className="cursor-pointer bg-white rounded-2xl p-4 shadow-sm border border-slate-200 space-y-3 group hover:border-blue-300 transition-colors relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-1 h-full bg-orange-500 group-hover:bg-orange-600 transition-colors"></div>
+              <div className="absolute top-3 right-3 text-slate-200 font-black text-xl group-hover:text-orange-100 transition-colors">#{index + 1}</div>
+              <div className="pl-2">
+                <h3 className="font-bold text-slate-800 text-sm mb-2">{k.name}</h3>
+                <div className="flex flex-wrap gap-2 pr-6">
+                  {(k.jalurIds || []).map(jid => {
+                    const jal = jalurs.find(j => j.id === jid);
+                    return (
+                      <span key={jid} className="bg-blue-50 border border-blue-100 text-blue-700 text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider">
+                        {jal?.name || jid}
+                      </span>
+                    );
+                  })}
+                </div>
+                <div className="mt-2 text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+                  User: {k.username || '-'}
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          ))
+        )}
       </div>
 
       {/* Floating Action Button */}

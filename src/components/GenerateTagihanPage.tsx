@@ -7,7 +7,7 @@ import PageHeader from './PageHeader';
 export default function GenerateTagihanPage({ onBack }: { onBack: () => void }) {
   const { 
     pelanggans, tarifs, jalurs, kolektors, tagihanPeriods, 
-    saveTagihanPeriod, saveTagihanDetail, deleteTagihanPeriod, showToast 
+    saveTagihanPeriod, saveTagihanDetail, deleteTagihanPeriod, saveTagihanBatch, showToast 
   } = useAppContext();
   
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
@@ -88,22 +88,19 @@ export default function GenerateTagihanPage({ onBack }: { onBack: () => void }) 
         });
       });
 
-      await saveTagihanPeriod({
+      await saveTagihanBatch({
         id: periodId,
         month: selectedMonth,
         year: selectedYear,
         totalDays: totalDays,
         totalAmount: computedTotalAmount,
         generatedDate: new Date().toISOString()
-      });
-
-      for (const detail of detailsToSave) {
-        await saveTagihanDetail(detail);
-      }
+      }, detailsToSave);
 
       showToast(`Tagihan Periode ${months[selectedMonth]} ${selectedYear} sukses.`);
       onBack();
     } catch (e) {
+      console.error(e);
       showToast('Gagal generate', 'error');
     } finally {
       setIsGenerating(false);

@@ -56,6 +56,7 @@ type AppState = {
   saveTagihanPeriod: (period: TagihanPeriod) => Promise<void>;
   deleteTagihanPeriod: (id: string) => Promise<void>;
   saveTagihanDetail: (detail: TagihanDetail) => Promise<void>;
+  saveTagihanBatch: (period: TagihanPeriod, details: TagihanDetail[]) => Promise<void>;
   seedInitialData: () => Promise<void>;
 };
 
@@ -185,13 +186,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const unsubAuth = onAuthStateChanged(auth, async (user) => {
       if (user) {
         setCurrentUser(user);
-        setupListeners();
       } else {
+        // Only try to sign in if not already authenticated
         signInAnonymously(auth).catch((e) => {
-          console.error("Auth error:", e);
-          setIsLoading(false);
+          console.warn("Anonymous auth failed, proceeding without auth:", e);
         });
       }
+      // Always setup listeners regardless of auth state for now
+      setupListeners();
     });
 
     return () => {
@@ -212,39 +214,50 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const seedInitialData = async () => {
     setIsLoading(true);
     try {
+      console.log('Starting seedInitialData...');
       const { writeBatch, getDocs } = await import('firebase/firestore');
       const batch = writeBatch(db);
 
+      let seededAny = false;
+
       // Helper to seed if empty
       const seedIfEmpty = async (colName: string, data: any[]) => {
+        console.log(`Checking collection: ${colName}`);
         const snap = await getDocs(collection(db, colName));
         if (snap.empty) {
-          data.forEach(item => batch.set(doc(db, colName, item.id), item));
+          console.log(`Collection ${colName} is empty, seeding ${data.length} items`);
+          data.forEach(item => {
+            const docRef = doc(db, colName, item.id);
+            batch.set(docRef, item);
+          });
+          seededAny = true;
           return true;
         }
+        console.log(`Collection ${colName} already has ${snap.size} items`);
         return false;
       };
 
-      const seeded = [
-        await seedIfEmpty('tarifs', initialTarifs),
-        await seedIfEmpty('jalurs', initialJalurs),
-        await seedIfEmpty('kolektors', initialKolektors),
-        await seedIfEmpty('pelanggans', initialPelanggans),
-        await seedIfEmpty('operators', [{ id: 'op1', name: 'Eggy Setiawan', username: 'eggystwn@operator', password: 'Zefanya' }])
-      ];
+      await seedIfEmpty('tarifs', initialTarifs);
+      await seedIfEmpty('jalurs', initialJalurs);
+      await seedIfEmpty('kolektors', initialKolektors);
+      await seedIfEmpty('pelanggans', initialPelanggans);
+      await seedIfEmpty('operators', [{ id: 'op1', name: 'Eggy Setiawan', username: 'eggystwn@operator', password: 'Zefanya' }]);
 
-      // Always update settings if they exist but are default or just ensure they exist
+      // Always update settings or ensure they exist
       batch.set(doc(db, 'settings', 'app_settings'), appSettings);
       batch.set(doc(db, 'settings', 'print_settings'), { f4Template, f4Config });
       
+      console.log('Committing batch...');
       await batch.commit();
+      console.log('Batch committed successfully');
       
-      if (seeded.some(s => s)) {
+      if (seededAny) {
         showToast('Data awal berhasil disinkronkan ke Firebase!');
       } else {
         showToast('Database sudah sinkron dengan Firebase.');
       }
     } catch (e) {
+      console.error('Seed error:', e);
       handleFirestoreErrorLocal(e, OperationType.WRITE, 'seed');
     } finally {
       setIsLoading(false);
@@ -267,6 +280,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       await setDoc(doc(db, collectionName, id), data);
     } catch (e) {
       handleFirestoreErrorLocal(e, OperationType.WRITE, `${collectionName}/${id}`);
+      throw e;
     }
   };
 
@@ -275,6 +289,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       await deleteDoc(doc(db, collectionName, id));
     } catch (e) {
       handleFirestoreErrorLocal(e, OperationType.DELETE, `${collectionName}/${id}`);
+      throw e;
     }
   };
 
@@ -291,6 +306,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const saveTagihanPeriod = (p: TagihanPeriod) => saveEntity('tagihanPeriods', p.id, p);
   const deleteTagihanPeriod = (id: string) => deleteEntity('tagihanPeriods', id);
   const saveTagihanDetail = (d: TagihanDetail) => saveEntity('tagihanDetails', d.id, d);
+
+  const saveTagihanBatch = async (period: TagihanPeriod, details: TagihanDetail[]) => {
+    const { writeBatch } = await import('firebase/firestore');
+    const batch = writeBatch(db);
+    
+    batch.set(doc(db, 'tagihanPeriods', period.id), period);
+    details.forEach(d => batch.set(doc(db, 'tagihanDetails', d.id), d));
+    
+    try {
+      await batch.commit();
+    } catch (e) {
+      handleFirestoreErrorLocal(e, OperationType.WRITE, 'tagihanBatch');
+      throw e;
+    }
+  };
 
   const savePrintSettings = async (template: string, config: any) => {
     try {
@@ -339,6 +369,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       saveKolektor, deleteKolektor,
       saveOperator, deleteOperator,
       saveTagihanPeriod, deleteTagihanPeriod, saveTagihanDetail,
+      saveTagihanBatch,
       seedInitialData,
       setCurrentUser,
       userRole,
