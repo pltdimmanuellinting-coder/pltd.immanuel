@@ -37,8 +37,11 @@ type AppState = {
   saveAppSettings: (settings: { logo: string, profilePic: string, appName: string, address: string }) => Promise<void>;
   showToast: (message: string, type?: 'success' | 'error') => void;
   currentUser: any | null;
+  setCurrentUser: (user: any) => void;
   userRole: Role | null;
+  setUserRole: (role: Role | null) => void;
   isLoading: boolean;
+  setIsLoading: (loading: boolean) => void;
   logout: () => Promise<void>;
   savePelanggan: (pelanggan: Pelanggan) => Promise<void>;
   deletePelanggan: (id: string) => Promise<void>;
@@ -88,8 +91,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [currentUser, setCurrentUser] = useState<any | null>(null);
   const [userRole, setUserRole] = useState<Role | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  
   const [toastMessage, setToastMessage] = useState<{message: string, type: 'success'|'error', id: number} | null>(null);
+  
+  const handleFirestoreErrorLocal = (e: any, op: OperationType, path: string) => {
+    console.error(`Firestore Error [${op}] on ${path}:`, e);
+    showToast(`Gagal ${op}: ${e.message || 'Kesalahan Database'}`, 'error');
+  };
 
   // Persistence Setup
   useEffect(() => {
@@ -105,30 +112,53 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     const setupListeners = async () => {
       try {
-        unsubPelanggans = onSnapshot(collection(db, 'pelanggans'), (s) => 
-          setPelanggans(s.docs.map(d => d.data() as Pelanggan)), (e) => handleFirestoreError(e, OperationType.LIST, 'pelanggans'));
+        // Track how many listeners have received their first snapshot
+        let loadedCount = 0;
+        const totalListeners = 9; // 7 collections + 2 settings
+        const markLoaded = () => {
+          loadedCount++;
+          if (loadedCount >= totalListeners) setIsLoading(false);
+        };
+
+        unsubPelanggans = onSnapshot(collection(db, 'pelanggans'), (s) => {
+          setPelanggans(s.docs.map(d => ({ ...d.data(), id: d.id } as Pelanggan)));
+          markLoaded();
+        }, (e) => handleFirestoreErrorLocal(e, OperationType.LIST, 'pelanggans'));
         
-        unsubTarifs = onSnapshot(collection(db, 'tarifs'), (s) => 
-          setTarifs(s.docs.map(d => d.data() as Tarif)), (e) => handleFirestoreError(e, OperationType.LIST, 'tarifs'));
+        unsubTarifs = onSnapshot(collection(db, 'tarifs'), (s) => {
+          setTarifs(s.docs.map(d => ({ ...d.data(), id: d.id } as Tarif)));
+          markLoaded();
+        }, (e) => handleFirestoreErrorLocal(e, OperationType.LIST, 'tarifs'));
         
-        unsubJalurs = onSnapshot(collection(db, 'jalurs'), (s) => 
-          setJalurs(s.docs.map(d => d.data() as Jalur)), (e) => handleFirestoreError(e, OperationType.LIST, 'jalurs'));
+        unsubJalurs = onSnapshot(collection(db, 'jalurs'), (s) => {
+          setJalurs(s.docs.map(d => ({ ...d.data(), id: d.id } as Jalur)));
+          markLoaded();
+        }, (e) => handleFirestoreErrorLocal(e, OperationType.LIST, 'jalurs'));
         
-        unsubKolektors = onSnapshot(collection(db, 'kolektors'), (s) => 
-          setKolektors(s.docs.map(d => d.data() as Kolektor)), (e) => handleFirestoreError(e, OperationType.LIST, 'kolektors'));
+        unsubKolektors = onSnapshot(collection(db, 'kolektors'), (s) => {
+          setKolektors(s.docs.map(d => ({ ...d.data(), id: d.id } as Kolektor)));
+          markLoaded();
+        }, (e) => handleFirestoreErrorLocal(e, OperationType.LIST, 'kolektors'));
         
-        unsubOperators = onSnapshot(collection(db, 'operators'), (s) => 
-          setOperators(s.docs.map(d => d.data() as Operator)), (e) => handleFirestoreError(e, OperationType.LIST, 'operators'));
+        unsubOperators = onSnapshot(collection(db, 'operators'), (s) => {
+          setOperators(s.docs.map(d => ({ ...d.data(), id: d.id } as Operator)));
+          markLoaded();
+        }, (e) => handleFirestoreErrorLocal(e, OperationType.LIST, 'operators'));
         
-        unsubPeriods = onSnapshot(collection(db, 'tagihanPeriods'), (s) => 
-          setTagihanPeriods(s.docs.map(d => d.data() as TagihanPeriod)), (e) => handleFirestoreError(e, OperationType.LIST, 'tagihanPeriods'));
+        unsubPeriods = onSnapshot(collection(db, 'tagihanPeriods'), (s) => {
+          setTagihanPeriods(s.docs.map(d => ({ ...d.data(), id: d.id } as TagihanPeriod)));
+          markLoaded();
+        }, (e) => handleFirestoreErrorLocal(e, OperationType.LIST, 'tagihanPeriods'));
         
-        unsubDetails = onSnapshot(collection(db, 'tagihanDetails'), (s) => 
-          setTagihanDetails(s.docs.map(d => d.data() as TagihanDetail)), (e) => handleFirestoreError(e, OperationType.LIST, 'tagihanDetails'));
+        unsubDetails = onSnapshot(collection(db, 'tagihanDetails'), (s) => {
+          setTagihanDetails(s.docs.map(d => ({ ...d.data(), id: d.id } as TagihanDetail)));
+          markLoaded();
+        }, (e) => handleFirestoreErrorLocal(e, OperationType.LIST, 'tagihanDetails'));
         
         unsubAppSettings = onSnapshot(doc(db, 'settings', 'app_settings'), (d) => {
-          if (d.exists()) setAppSettings(d.data() as any);
-        }, (e) => handleFirestoreError(e, OperationType.GET, 'settings/app_settings'));
+          if (d.exists()) setAppSettings({ ...d.data(), id: d.id } as any);
+          markLoaded();
+        }, (e) => handleFirestoreErrorLocal(e, OperationType.GET, 'settings/app_settings'));
 
         unsubPrintSettings = onSnapshot(doc(db, 'settings', 'print_settings'), (d) => {
           if (d.exists()) {
@@ -138,11 +168,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               setF4Config(data.f4Config);
             }
           }
-        }, (e) => handleFirestoreError(e, OperationType.GET, 'settings/print_settings'));
+          markLoaded();
+        }, (e) => handleFirestoreErrorLocal(e, OperationType.GET, 'settings/print_settings'));
 
       } catch (err) {
         console.error("Critical error setting up listeners:", err);
-      } finally {
         setIsLoading(false);
       }
     };
@@ -182,25 +212,40 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const seedInitialData = async () => {
     setIsLoading(true);
     try {
-      // Seed master data
-      for (const t of initialTarifs) await setDoc(doc(db, 'tarifs', t.id), t);
-      for (const j of initialJalurs) await setDoc(doc(db, 'jalurs', j.id), j);
-      for (const k of initialKolektors) await setDoc(doc(db, 'kolektors', k.id), k);
-      for (const p of initialPelanggans) await setDoc(doc(db, 'pelanggans', p.id), p);
+      const { writeBatch, getDocs } = await import('firebase/firestore');
+      const batch = writeBatch(db);
+
+      // Helper to seed if empty
+      const seedIfEmpty = async (colName: string, data: any[]) => {
+        const snap = await getDocs(collection(db, colName));
+        if (snap.empty) {
+          data.forEach(item => batch.set(doc(db, colName, item.id), item));
+          return true;
+        }
+        return false;
+      };
+
+      const seeded = [
+        await seedIfEmpty('tarifs', initialTarifs),
+        await seedIfEmpty('jalurs', initialJalurs),
+        await seedIfEmpty('kolektors', initialKolektors),
+        await seedIfEmpty('pelanggans', initialPelanggans),
+        await seedIfEmpty('operators', [{ id: 'op1', name: 'Eggy Setiawan', username: 'eggystwn@operator', password: 'Zefanya' }])
+      ];
+
+      // Always update settings if they exist but are default or just ensure they exist
+      batch.set(doc(db, 'settings', 'app_settings'), appSettings);
+      batch.set(doc(db, 'settings', 'print_settings'), { f4Template, f4Config });
       
-      // Seed operator if missing
-      const opSnap = await getDocs(collection(db, 'operators'));
-      if (opSnap.empty) {
-        await setDoc(doc(db, 'operators', 'op1'), { id: 'op1', name: 'Eggy Setiawan', username: 'eggystwn@operator', password: 'Zefanya' });
+      await batch.commit();
+      
+      if (seeded.some(s => s)) {
+        showToast('Data awal berhasil disinkronkan ke Firebase!');
+      } else {
+        showToast('Database sudah sinkron dengan Firebase.');
       }
-      
-      // Seed settings
-      await setDoc(doc(db, 'settings', 'app_settings'), appSettings);
-      await setDoc(doc(db, 'settings', 'print_settings'), { f4Template, f4Config });
-      
-      showToast('Data berhasil disinkronkan ke Firebase!');
     } catch (e) {
-      handleFirestoreError(e, OperationType.WRITE, 'seed');
+      handleFirestoreErrorLocal(e, OperationType.WRITE, 'seed');
     } finally {
       setIsLoading(false);
     }
@@ -221,7 +266,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     try {
       await setDoc(doc(db, collectionName, id), data);
     } catch (e) {
-      handleFirestoreError(e, OperationType.WRITE, `${collectionName}/${id}`);
+      handleFirestoreErrorLocal(e, OperationType.WRITE, `${collectionName}/${id}`);
     }
   };
 
@@ -229,7 +274,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     try {
       await deleteDoc(doc(db, collectionName, id));
     } catch (e) {
-      handleFirestoreError(e, OperationType.DELETE, `${collectionName}/${id}`);
+      handleFirestoreErrorLocal(e, OperationType.DELETE, `${collectionName}/${id}`);
     }
   };
 
@@ -295,7 +340,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       saveOperator, deleteOperator,
       saveTagihanPeriod, deleteTagihanPeriod, saveTagihanDetail,
       seedInitialData,
-      currentUser, userRole, isLoading
+      setCurrentUser,
+      userRole,
+      setUserRole,
+      isLoading,
+      setIsLoading,
     }}>
       {children}
       {toastMessage && (

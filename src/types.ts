@@ -33,6 +33,7 @@ export type Pelanggan = {
   alamat?: string;
   jalurId: string;
   tarifId: string;
+  status: string; // Added status
   username?: string;
   password?: string;
   uid?: string;

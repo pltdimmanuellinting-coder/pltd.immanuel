@@ -116,7 +116,7 @@ export default function TagihanPage({ onBack, role }: { onBack: () => void, role
     element.innerHTML = `
       <div style="font-family: sans-serif;">
         <h1 style="color: #1d4ed8; margin: 0;">DAFTAR TAGIHAN LISTRIK</h1>
-        <h2 style="color: #64748b; margin: 5px 0 20px 0;">Periode ${months[selectedMonth]} ${selectedYear}</h2>
+        <h2 style="color: #64748b; margin: 5px 0 20px 0;">Periode ${months[selectedPeriod.month]} ${selectedPeriod.year}</h2>
         <table style="width: 100%; border-collapse: collapse;">
           <thead>
             <tr style="background: #f1f5f9; text-align: left;">
@@ -155,7 +155,7 @@ export default function TagihanPage({ onBack, role }: { onBack: () => void, role
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
       pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-      pdf.save(`tagihan_${months[selectedMonth]}_${selectedYear}.pdf`);
+      pdf.save(`tagihan_${months[selectedPeriod.month]}_${selectedPeriod.year}.pdf`);
       showToast('Unduh PDF Berhasil');
     } catch (err) {
       console.error(err);
@@ -187,7 +187,7 @@ export default function TagihanPage({ onBack, role }: { onBack: () => void, role
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', `tagihan_${months[selectedMonth]}_${selectedYear}.csv`);
+    link.setAttribute('download', `tagihan_${months[selectedPeriod.month]}_${selectedPeriod.year}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

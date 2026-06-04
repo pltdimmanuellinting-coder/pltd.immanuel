@@ -19,24 +19,24 @@ import DesignShowcase from './components/DesignShowcase';
 export default function App() {
   const { 
     appSettings, setAppSettings, saveAppSettings, pelanggans, kolektors, operators, showToast,
-    currentUser: firebaseUser, userRole: firebaseRole, isLoading, printContent, seedInitialData
+    userRole: role,
+    currentUser, isLoading, printContent, seedInitialData,
+    setUserRole, setCurrentUser, logout
   } = useAppContext();
   
-  const [role, setRole] = useState<Role | null>(null);
-  const [currentUser, setCurrentUser] = useState<any>(null);
   const [currentTab, setCurrentTab] = useState<'home' | 'tagihan' | 'print' | 'profile' | 'pelanggan' | 'generate_tagihan' | 'template_studio' | 'pembukuan' | 'showcase'>('home');
   const [loginUsername, setLoginUsername] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
 
-  // Sync with Firebase Auth state
+  // Sync with user data
   useEffect(() => {
-    if (firebaseRole) {
-      setRole(firebaseRole);
-      // Try to find the user in our lists
-      const op = operators.find(o => o.id === firebaseUser?.uid);
-      if (op) setCurrentUser(op);
+    if (role && !currentUser?.name) {
+      if (role === 'Operator') {
+        const op = operators.find(o => o.id === currentUser?.uid || o.username === 'eggystwn@operator');
+        if (op) setCurrentUser(op);
+      }
     }
-  }, [firebaseRole, firebaseUser, operators]);
+  }, [role, currentUser, operators]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,7 +45,7 @@ export default function App() {
     const op = operators.find(x => x.username === loginUsername && x.password === loginPassword);
     if (op || (loginUsername === 'eggystwn@operator' && loginPassword === 'Zefanya')) {
         const user = op || { id: 'op1', name: 'Eggy Setiawan', username: 'eggystwn@operator' };
-        setRole('Operator');
+        setUserRole('Operator');
         setCurrentUser(user);
         showToast(`Selamat datang, ${user.name}`);
         return;
@@ -55,7 +55,7 @@ export default function App() {
     const kc = kolektors.find(x => x.username === loginUsername && x.password === loginPassword);
     if (kc || (loginUsername === 'yusua' && loginPassword === '123')) {
        const user = kc || { id: 'k1', name: 'Yusua (Backup)', username: 'yusua' };
-       setRole('Kolektor');
+       setUserRole('Kolektor');
        setCurrentUser(user);
        showToast(`Selamat datang, ${user.name}`);
        return;
@@ -64,7 +64,7 @@ export default function App() {
     // Check pelanggans
     const pc = pelanggans.find(x => x.username === loginUsername && x.password === loginPassword);
     if (pc) {
-       setRole('Pelanggan');
+       setUserRole('Pelanggan');
        setCurrentUser(pc);
        showToast(`Selamat datang, ${pc.name}`);
        return;
@@ -268,7 +268,7 @@ export default function App() {
               </div>
 
               <button 
-                onClick={() => { setRole(null); setCurrentTab('home'); }}
+                onClick={() => { setUserRole(null); setCurrentTab('home'); }}
                 className="w-full flex items-center justify-center gap-2 bg-red-50 text-red-600 p-4 rounded-xl border border-red-100 font-bold transition-colors hover:bg-red-100 mt-8"
               >
                 <LogOut size={20} />
@@ -321,7 +321,7 @@ export default function App() {
               </div>
 
               <button 
-                onClick={() => { setRole(null); setCurrentTab('home'); }}
+                onClick={() => { setUserRole(null); setCurrentTab('home'); }}
                 className="relative h-12 w-12 shrink-0 rounded-2xl bg-white/10 backdrop-blur-xl border border-white/20 shadow-xl flex items-center justify-center overflow-hidden transition-all hover:bg-white/20 active:scale-95 text-white/90"
                 title="Keluar"
               >
