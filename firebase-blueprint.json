@@ -1,0 +1,136 @@
+{
+  "entities": {
+    "Tarif": {
+      "title": "Tarif",
+      "description": "Subscription rates for electricity.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "price": { "type": "number" }
+      },
+      "required": ["id", "name", "price"]
+    },
+    "Jalur": {
+      "title": "Jalur",
+      "description": "Route or area for billing.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "alamat": { "type": "string" }
+      },
+      "required": ["id", "name"]
+    },
+    "Kolektor": {
+      "title": "Kolektor",
+      "description": "Staff who collects payments.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "jalurIds": { "type": "array", "items": { "type": "string" } },
+        "username": { "type": "string" },
+        "password": { "type": "string" }
+      },
+      "required": ["id", "name", "jalurIds"]
+    },
+    "Operator": {
+      "title": "Operator",
+      "description": "System operators.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "username": { "type": "string" },
+        "password": { "type": "string" }
+      },
+      "required": ["id", "name"]
+    },
+    "Pelanggan": {
+      "title": "Pelanggan",
+      "description": "Electricity customers.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "alamat": { "type": "string" },
+        "jalurId": { "type": "string" },
+        "tarifId": { "type": "string" },
+        "username": { "type": "string" },
+        "password": { "type": "string" },
+        "uid": { "type": "string" }
+      },
+      "required": ["id", "name", "jalurId", "tarifId"]
+    },
+    "TagihanPeriod": {
+      "title": "TagihanPeriod",
+      "description": "Billing period definition.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "month": { "type": "number" },
+        "year": { "type": "number" },
+        "totalDays": { "type": "number" },
+        "totalAmount": { "type": "number" },
+        "generatedDate": { "type": "string" }
+      },
+      "required": ["id", "month", "year", "totalDays", "totalAmount", "generatedDate"]
+    },
+    "TagihanDetail": {
+      "title": "TagihanDetail",
+      "description": "Specific bill details for a customer.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "periodId": { "type": "string" },
+        "pelangganId": { "type": "string" },
+		"snapshotPelangganName": { "type": "string" },
+		"snapshotPelangganAlamat": { "type": "string" },
+		"snapshotJalurName": { "type": "string" },
+		"snapshotTarifName": { "type": "string" },
+		"snapshotTarifPrice": { "type": "number" },
+		"kolektorId": { "type": "string" },
+		"kolektorName": { "type": "string" },
+		"pemakaianHari": { "type": "number" },
+		"totalHariSebulan": { "type": "number" },
+		"hariMatiListrik": { "type": "number" },
+		"totalTagihan": { "type": "number" },
+		"catatan": { "type": "string" },
+		"status": { "type": "string", "enum": ["Lunas", "Belum Lunas"] }
+      },
+      "required": ["id", "periodId", "pelangganId", "status"]
+    },
+    "AppSettings": {
+      "title": "AppSettings",
+      "description": "Application configuration.",
+      "type": "object",
+      "properties": {
+        "logo": { "type": "string" },
+        "profilePic": { "type": "string" },
+        "appName": { "type": "string" },
+        "address": { "type": "string" }
+      }
+    },
+	"PrintSettings": {
+      "title": "PrintSettings",
+      "description": "F4 Printing templates and configuration.",
+      "type": "object",
+      "properties": {
+        "f4Template": { "type": "string" },
+        "f4Config": { "type": "object" }
+      }
+    }
+  },
+  "firestore": {
+    "/tarifs/{tarifId}": { "schema": "Tarif", "description": "Collection of tariffs." },
+    "/jalurs/{jalurId}": { "schema": "Jalur", "description": "Collection of jalurs." },
+    "/kolektors/{kolektorId}": { "schema": "Kolektor", "description": "Collection of collectors." },
+    "/operators/{operatorId}": { "schema": "Operator", "description": "Collection of operators." },
+    "/pelanggans/{pelangganId}": { "schema": "Pelanggan", "description": "Collection of customers." },
+    "/tagihanPeriods/{periodId}": { "schema": "TagihanPeriod", "description": "Collection of billing periods." },
+    "/tagihanDetails/{detailId}": { "schema": "TagihanDetail", "description": "Collection of billing details." },
+    "/settings/app_settings": { "schema": "AppSettings", "description": "App settings document." },
+    "/settings/print_settings": { "schema": "PrintSettings", "description": "Print settings document." }
+  }
+}
