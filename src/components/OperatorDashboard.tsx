@@ -57,25 +57,6 @@ export default function OperatorDashboard({ onNavigate, onSeedData }: OperatorDa
         </div>
       </div>
 
-      <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
-        <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-          <div className="w-1 h-3 bg-blue-600 rounded-full" />
-          Data Synchronization
-        </h2>
-        <button 
-          onClick={() => {
-            console.log('Sync button clicked - attempting sync');
-            onSeedData();
-          }}
-          className="w-full bg-[#0000ff] text-white p-4 rounded-xl font-black text-[11px] uppercase tracking-tighter flex items-center justify-center gap-2 shadow-lg shadow-blue-200 hover:bg-blue-700 transition-colors active:scale-95"
-        >
-          <div className="w-6 h-6 bg-white/20 rounded flex items-center justify-center">
-            <Users size={14} />
-          </div>
-          SINKRONISASI DATA KE FIREBASE
-        </button>
-      </div>
-
       <div className="bg-gradient-to-br from-blue-700 to-blue-900 text-white rounded-2xl p-5 shadow-xl relative overflow-hidden">
         <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl" />
         <h3 className="text-[10px] font-black uppercase tracking-widest text-blue-300 mb-4 opacity-80">Ringkasan Operasional</h3>
@@ -83,7 +64,7 @@ export default function OperatorDashboard({ onNavigate, onSeedData }: OperatorDa
           <div className="flex justify-between items-center border-b border-white/10 pb-3">
              <div className="flex flex-col">
                 <span className="text-[9px] text-blue-200 font-bold uppercase">Siklus Aktif</span>
-                <span className="text-sm font-black">Mei - Juni 2026</span>
+                <span className="text-sm font-black">Aktif</span>
              </div>
              <div className="text-right">
                 <span className="text-[9px] text-blue-200 font-bold uppercase">Status</span>
@@ -93,11 +74,11 @@ export default function OperatorDashboard({ onNavigate, onSeedData }: OperatorDa
           <div className="grid grid-cols-2 gap-4">
              <div>
                 <span className="text-[9px] text-blue-200 font-bold uppercase block mb-0.5">Pelanggan Aktif</span>
-                <span className="text-lg font-black leading-none tracking-tight">1,280</span>
+                <span className="text-lg font-black leading-none tracking-tight">TERDATA</span>
              </div>
              <div>
                 <span className="text-[9px] text-blue-200 font-bold uppercase block mb-0.5">Penagihan Selesai</span>
-                <span className="text-lg font-black leading-none tracking-tight text-emerald-400">75%</span>
+                <span className="text-lg font-black leading-none tracking-tight text-emerald-400">PROSES</span>
              </div>
           </div>
           <div className="w-full bg-blue-950/50 rounded-full h-2 mt-2 overflow-hidden border border-white/5">

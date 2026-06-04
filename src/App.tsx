@@ -13,20 +13,77 @@ import GenerateTagihanPage from './components/GenerateTagihanPage';
 import TemplateStudioPage from './components/TemplateStudioPage';
 import TagihanPage from './components/TagihanPage';
 import PrintPage from './components/PrintPage';
+import PembukuanPage from './components/PembukuanPage';
 import PageHeader from './components/PageHeader';
 import DesignShowcase from './components/DesignShowcase';
+import CollectorDashboard from './components/CollectorDashboard';
+import PelangganDashboard from './components/PelangganDashboard';
 
 export default function App() {
   const { 
     appSettings, setAppSettings, saveAppSettings, pelanggans, kolektors, operators, showToast,
     userRole: role,
     currentUser, isLoading, seedInitialData,
-    setUserRole, setCurrentUser, logout
+    setUserRole, setCurrentUser, logout,
+    updateUserProfile, updateUserPassword
   } = useAppContext();
   
   const [currentTab, setCurrentTab] = useState<'home' | 'tagihan' | 'print' | 'profile' | 'pelanggan' | 'generate_tagihan' | 'template_studio' | 'pembukuan' | 'showcase'>('home');
   const [loginUsername, setLoginUsername] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
+
+  // Profile Edit State
+  const [profileName, setProfileName] = useState('');
+  const [profileEmail, setProfileEmail] = useState('');
+  const [profilePhone, setProfilePhone] = useState('');
+  const [passwordOld, setPasswordOld] = useState('');
+  const [passwordNew, setPasswordNew] = useState('');
+  const [passwordConfirm, setPasswordConfirm] = useState('');
+  const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
+
+  useEffect(() => {
+    if (currentUser) {
+      setProfileName(currentUser.name || '');
+      setProfileEmail(currentUser.email || '');
+      setProfilePhone(currentUser.phone || '');
+    }
+  }, [currentUser]);
+
+  const handleUpdateProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!role || !currentUser) return;
+    setIsUpdatingProfile(true);
+    try {
+      await updateUserProfile(role, currentUser.id, {
+        name: profileName,
+        email: profileEmail,
+        phone: profilePhone
+      });
+      
+      if (passwordOld && passwordNew) {
+        if (passwordNew !== passwordConfirm) {
+          showToast('Konfirmasi password baru tidak cocok', 'error');
+          setIsUpdatingProfile(false);
+          return;
+        }
+        const res = await updateUserPassword(role, currentUser.id, passwordOld, passwordNew);
+        if (!res.success) {
+          showToast(res.message, 'error');
+          setIsUpdatingProfile(false);
+          return;
+        }
+      }
+      
+      showToast('Profil berhasil diperbarui');
+      setPasswordOld('');
+      setPasswordNew('');
+      setPasswordConfirm('');
+    } catch (err) {
+      showToast('Gagal memperbarui profil', 'error');
+    } finally {
+      setIsUpdatingProfile(false);
+    }
+  };
 
   // Sync with user data
   useEffect(() => {
@@ -139,6 +196,8 @@ export default function App() {
             </div>
           );
         }
+        if (role === 'Kolektor') return <CollectorDashboard onNavigate={setCurrentTab} />;
+        if (role === 'Pelanggan') return <PelangganDashboard onNavigate={setCurrentTab} />;
         return <div className="p-4 text-center mt-10">Welcome {role}</div>;
       case 'pelanggan':
         return <PelangganPage onBack={() => setCurrentTab('home')} />;
@@ -147,12 +206,7 @@ export default function App() {
       case 'template_studio':
         return <TemplateStudioPage onBack={() => setCurrentTab('home')} />;
       case 'pembukuan':
-        return (
-          <div className="flex flex-col h-[100dvh] bg-white relative overflow-hidden">
-            <PageHeader title="PEMBUKUAN" onBack={() => setCurrentTab('home')} />
-            <div className="p-4 text-center mt-10 h-full text-slate-400 font-bold uppercase tracking-widest text-xs">Modul Pembukuan Sedang Dikembangkan</div>
-          </div>
-        );
+        return <PembukuanPage onBack={() => setCurrentTab('home')} />;
       case 'tagihan':
         return <TagihanPage onBack={() => setCurrentTab('home')} role={role} />;
       case 'print':
@@ -162,7 +216,7 @@ export default function App() {
       case 'profile':
         return (
           <div className="flex flex-col h-[100dvh] bg-white relative overflow-hidden">
-            <PageHeader title="SETTING" onBack={() => setCurrentTab('home')} />
+            <PageHeader title="PENGATURAN & PROFIL" onBack={() => setCurrentTab('home')} />
             <div className="p-5 overflow-y-auto pb-32 space-y-6 flex-1">
               <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-200 space-y-4">
                 <h3 className="font-bold text-sm text-slate-700 block border-b border-slate-100 pb-2">Identitas Aplikasi</h3>
@@ -251,28 +305,94 @@ export default function App() {
                   </div>
                 </div>
                 
-                <div className="space-y-3 pt-2">
+                <form onSubmit={handleUpdateProfile} className="space-y-3 pt-2">
                    <div>
-                     <label className="text-xs text-slate-500 font-bold mb-1 block">Nama Pengguna</label>
-                     <input type="text" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-700 outline-none focus:border-blue-500 transition-all" defaultValue={currentUser?.name || role || ''} />
+                     <label className="text-xs text-slate-500 font-bold mb-1 block">Nama Lengkap</label>
+                     <input 
+                      type="text" 
+                      required
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-700 outline-none focus:border-blue-500 transition-all font-sans" 
+                      value={profileName}
+                      onChange={(e) => setProfileName(e.target.value)}
+                     />
                    </div>
-                   <div>
-                     <label className="text-xs text-slate-500 font-bold mb-1 block">Kata Sandi Baru</label>
-                     <input type="password" placeholder="Kosongkan jika tidak diganti" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium outline-none focus:border-blue-500 transition-all" />
+                   <div className="grid grid-cols-2 gap-3">
+                     <div>
+                       <label className="text-xs text-slate-500 font-bold mb-1 block">Email</label>
+                       <input 
+                        type="email" 
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium outline-none focus:border-blue-500 transition-all" 
+                        value={profileEmail}
+                        onChange={(e) => setProfileEmail(e.target.value)}
+                        placeholder="email@contoh.com"
+                       />
+                     </div>
+                     <div>
+                       <label className="text-xs text-slate-500 font-bold mb-1 block">Nomor Telepon</label>
+                       <input 
+                        type="tel" 
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium outline-none focus:border-blue-500 transition-all" 
+                        value={profilePhone}
+                        onChange={(e) => setProfilePhone(e.target.value)}
+                        placeholder="0812..."
+                       />
+                     </div>
                    </div>
-                   <button className="bg-emerald-600 text-white shadow-lg shadow-emerald-200 px-4 py-3.5 rounded-xl text-sm font-bold w-full hover:bg-emerald-700 transition-all active:scale-95">
-                     Simpan Profil
+
+                   <div className="pt-4 border-t border-slate-100 mt-2">
+                     <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Keamanan (Ganti Password)</h4>
+                     <div className="space-y-3">
+                       <div>
+                         <label className="text-xs text-slate-500 font-bold mb-1 block">Password Lama</label>
+                         <input 
+                          type="password" 
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium outline-none focus:border-blue-500 transition-all" 
+                          value={passwordOld}
+                          onChange={(e) => setPasswordOld(e.target.value)}
+                          placeholder="Masukkan password saat ini"
+                         />
+                       </div>
+                       <div className="grid grid-cols-2 gap-3">
+                         <div>
+                           <label className="text-xs text-slate-500 font-bold mb-1 block">Password Baru</label>
+                           <input 
+                            type="password" 
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium outline-none focus:border-blue-500 transition-all" 
+                            value={passwordNew}
+                            onChange={(e) => setPasswordNew(e.target.value)}
+                           />
+                         </div>
+                         <div>
+                           <label className="text-xs text-slate-500 font-bold mb-1 block">Konfirmasi Baru</label>
+                           <input 
+                            type="password" 
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium outline-none focus:border-blue-500 transition-all" 
+                            value={passwordConfirm}
+                            onChange={(e) => setPasswordConfirm(e.target.value)}
+                           />
+                         </div>
+                       </div>
+                     </div>
+                   </div>
+
+                   <button 
+                    type="submit"
+                    disabled={isUpdatingProfile}
+                    className="bg-emerald-600 text-white shadow-lg shadow-emerald-200 px-4 py-3.5 rounded-xl text-sm font-bold w-full hover:bg-emerald-700 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2 mt-2"
+                   >
+                     {isUpdatingProfile && <Loader2 size={16} className="animate-spin" />}
+                     Simpan & Perbarui Profil
                    </button>
-                   
-                   <div className="pt-4 mt-4 border-t border-slate-100">
-                     <button 
-                       onClick={() => setCurrentTab('showcase')}
-                       className="w-full bg-slate-900 text-white shadow-lg shadow-slate-200 px-4 py-3.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all active:scale-95 flex items-center justify-center gap-2"
-                     >
-                       <PenTool size={16} /> Lihat Gallery Design
-                     </button>
-                     <p className="text-[9px] text-slate-400 mt-2 text-center uppercase font-bold tracking-tighter">Pilih gaya visual baru untuk aplikasi Anda</p>
-                   </div>
+                </form>
+                
+                <div className="pt-4 mt-4 border-t border-slate-100">
+                  <button 
+                    onClick={() => setCurrentTab('showcase')}
+                    className="w-full bg-slate-900 text-white shadow-lg shadow-slate-200 px-4 py-3.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all active:scale-95 flex items-center justify-center gap-2"
+                  >
+                    <PenTool size={16} /> Lihat Gallery Design
+                  </button>
+                  <p className="text-[9px] text-slate-400 mt-2 text-center uppercase font-bold tracking-tighter">Pilih gaya visual baru untuk aplikasi Anda</p>
                 </div>
               </div>
 

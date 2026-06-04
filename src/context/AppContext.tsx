@@ -22,7 +22,19 @@ type AppState = {
   appSettings: { logo: string, profilePic: string, appName: string, address: string, appContact: string };
   f4Template: string;
   setF4Template: (t: string) => void;
-  f4Config: any;
+  f4Config: {
+    paperWidth: number;
+    paperHeight: number;
+    marginTop: number;
+    marginBottom: number;
+    marginLeft: number;
+    marginRight: number;
+    gapX: number;
+    gapY: number;
+    primaryFont?: string;
+    secondaryFont?: string;
+    customFonts?: { family: string, url: string }[];
+  };
   setF4Config: (c: any) => void;
   savePrintSettings: (template: string, config: any) => Promise<void>;
   setPelanggans: React.Dispatch<React.SetStateAction<Pelanggan[]>>;
@@ -34,6 +46,8 @@ type AppState = {
   setTagihanDetails: React.Dispatch<React.SetStateAction<TagihanDetail[]>>;
   setAppSettings: React.Dispatch<React.SetStateAction<{ logo: string, profilePic: string, appName: string, address: string, appContact: string }>>;
   saveAppSettings: (settings: { logo: string, profilePic: string, appName: string, address: string, appContact: string }) => Promise<void>;
+  updateUserPassword: (role: Role, userId: string, oldPass: string, newPass: string) => Promise<{success: boolean, message: string}>;
+  updateUserProfile: (role: Role, userId: string, data: any) => Promise<void>;
   showToast: (message: string, type?: 'success' | 'error') => void;
   currentUser: any | null;
   setCurrentUser: (user: any) => void;
@@ -86,6 +100,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     marginRight: 8,
     gapX: 8,
     gapY: 8,
+    primaryFont: 'Inter',
+    secondaryFont: 'monospace',
+    customFonts: [] as { family: string, url: string }[]
   });
 
   const [currentUser, setCurrentUser] = useState<any | null>(null);
@@ -398,6 +415,41 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const updateUserProfile = async (role: Role, userId: string, data: any) => {
+    const colMap: Record<Role, string> = { 'Operator': 'operators', 'Kolektor': 'kolektors', 'Pelanggan': 'pelanggans' };
+    const collectionName = colMap[role];
+    try {
+      await updateDoc(doc(db, collectionName, userId), {
+        ...data,
+        updatedAt: Date.now()
+      });
+    } catch (e) {
+      handleFirestoreErrorLocal(e, OperationType.WRITE, `${collectionName}/${userId}`);
+      throw e;
+    }
+  };
+
+  const updateUserPassword = async (role: Role, userId: string, oldPass: string, newPass: string) => {
+    const colMap: Record<Role, string> = { 'Operator': 'operators', 'Kolektor': 'kolektors', 'Pelanggan': 'pelanggans' };
+    const collectionName = colMap[role];
+    try {
+      const docRef = doc(db, collectionName, userId);
+      const snap = await getDocFromServer(docRef);
+      if (!snap.exists()) return { success: false, message: 'User tidak ditemukan' };
+      
+      const userData = snap.data();
+      if (userData.password !== oldPass) {
+        return { success: false, message: 'Password lama salah' };
+      }
+
+      await updateDoc(docRef, { password: newPass, updatedAt: Date.now() });
+      return { success: true, message: 'Password berhasil diubah' };
+    } catch (e) {
+      console.error(e);
+      return { success: false, message: 'Terjadi kesalahan sistem' };
+    }
+  };
+
   return (
     <AppContext.Provider value={{
       pelanggans, setPelanggans,
@@ -408,7 +460,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       tagihanPeriods, setTagihanPeriods,
       tagihanDetails, setTagihanDetails,
       appSettings, setAppSettings,
-      saveAppSettings,
+      saveAppSettings, updateUserProfile, updateUserPassword,
       f4Template, setF4Template,
       f4Config, setF4Config,
       savePrintSettings,

@@ -5,6 +5,8 @@ export type Operator = {
   name: string;
   username?: string;
   password?: string;
+  email?: string;
+  phone?: string;
   createdAt?: number;
 };
 
@@ -29,6 +31,8 @@ export type Kolektor = {
   jalurIds: string[];
   username?: string;
   password?: string;
+  email?: string;
+  phone?: string;
   createdAt?: number;
 };
 
@@ -38,9 +42,12 @@ export type Pelanggan = {
   alamat?: string;
   jalurId: string;
   tarifId: string;
+  mcb?: string;
   status: string; // Added status
   username?: string;
   password?: string;
+  email?: string;
+  phone?: string;
   uid?: string;
   createdAt?: number;
 };

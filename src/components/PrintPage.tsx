@@ -16,7 +16,91 @@ export default function PrintPage({ onBack }: { onBack: () => void }) {
   const [pdfRenderHtml, setPdfRenderHtml] = useState('');
   const printRef = React.useRef<HTMLDivElement>(null);
 
-  const details = tagihanDetails.filter(d => d.periodId === selectedPeriodId);
+  const details = tagihanDetails
+    .filter(d => d.periodId === selectedPeriodId)
+    .sort((a, b) => {
+      const indexA = pelanggans.findIndex(p => p.id === a.pelangganId);
+      const indexB = pelanggans.findIndex(p => p.id === b.pelangganId);
+      return indexA - indexB;
+    });
+
+  const fontOptions = [
+    { name: 'Default (Inter)', value: 'Inter' },
+    { name: 'Space Grotesk', value: 'Space Grotesk' },
+    { name: 'Outfit', value: 'Outfit' },
+    { name: 'JetBrains Mono', value: 'JetBrains Mono' },
+    { name: 'monospace', value: 'monospace' },
+  ];
+
+  React.useEffect(() => {
+    const fontsToLoad = new Set<string>();
+    const googleFontOptions = fontOptions.map(f => f.value);
+    
+    if (f4Config.primaryFont && googleFontOptions.includes(f4Config.primaryFont) && f4Config.primaryFont !== 'Inter' && f4Config.primaryFont !== 'monospace') {
+      fontsToLoad.add(f4Config.primaryFont);
+    }
+    if (f4Config.secondaryFont && googleFontOptions.includes(f4Config.secondaryFont) && f4Config.secondaryFont !== 'Inter' && f4Config.secondaryFont !== 'monospace') {
+      fontsToLoad.add(f4Config.secondaryFont);
+    }
+    
+    const existingStyle = document.getElementById('print-fonts-style');
+    if (existingStyle) existingStyle.remove();
+    const existingLink = document.getElementById('print-fonts-link');
+    if (existingLink) existingLink.remove();
+
+    // 1. Handle Google Fonts
+    const urlFont = f4Config.customFonts?.find((f: any) => f.type === 'url');
+    if (urlFont?.family) fontsToLoad.add(urlFont.family);
+
+    if (fontsToLoad.size > 0 || urlFont?.url) {
+      const link = document.createElement('link');
+      link.id = 'print-fonts-link';
+      link.rel = 'stylesheet';
+      
+      const families = Array.from(fontsToLoad).map(f => `family=${f.replace(/ /g, '+')}:wght@400;700;800;900`).join('&');
+      let gUrl = families ? `https://fonts.googleapis.com/css2?${families}&display=swap` : '';
+      
+      if (urlFont?.url && !urlFont.url.includes('family=')) {
+         const extraLink = document.createElement('link');
+         extraLink.rel = 'stylesheet';
+         extraLink.href = urlFont.url;
+         document.head.appendChild(extraLink);
+      }
+
+      if (gUrl) {
+        link.href = gUrl;
+        document.head.appendChild(link);
+      }
+    }
+
+    // 2. Handle Base64 Uploaded Fonts
+    const uploadedFonts = f4Config.customFonts?.filter((f: any) => f.type === 'upload') || [];
+    if (uploadedFonts.length > 0) {
+      const style = document.createElement('style');
+      style.id = 'print-fonts-style';
+      let fontFaceRules = '';
+      uploadedFonts.forEach((font: any) => {
+        fontFaceRules += `
+          @font-face {
+            font-family: '${font.family}';
+            src: url('${font.url}');
+            font-weight: normal;
+            font-style: normal;
+          }
+        `;
+      });
+      style.textContent = fontFaceRules;
+      document.head.appendChild(style);
+    }
+    
+    // Cleanup on unmount
+    return () => {
+       const es = document.getElementById('print-fonts-style');
+       if (es) es.remove();
+       const el = document.getElementById('print-fonts-link');
+       if (el) el.remove();
+    }
+  }, [f4Config.primaryFont, f4Config.secondaryFont, f4Config.customFonts]);
 
   const months = [
     'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
@@ -34,79 +118,173 @@ export default function PrintPage({ onBack }: { onBack: () => void }) {
     
     try {
       let template = f4Template;
-      const defaultFallback = `<div style="padding: 15px; font-family: 'Inter', system-ui, sans-serif; font-size: 11px; border: 1px solid #cbd5e1; border-radius: 12px; height: 100%; box-sizing: border-box; display: flex; flex-direction: column; background-color: #ffffff; color: #1e293b; position: relative; overflow: hidden; box-shadow: inset 0 0 0 3px #f8fafc;">
-  <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 2px dashed #cbd5e1; padding-bottom: 12px; margin-bottom: 12px; width: 100%;">
-    <div style="display: flex; align-items: center; gap: 12px;">
-      <div style="width: 44px; height: 44px; background: #f8fafc; border-radius: 10px; display: flex; align-items: center; justify-content: center; overflow: hidden; border: 1px solid #e2e8f0;">
-        <img src="{{app_logo}}" style="width: 100%; height: 100%; object-fit: contain;" />
+      const primary = f4Config.primaryFont || 'Inter';
+      const secondary = f4Config.secondaryFont || 'monospace';
+      
+      const defaultFallback = `<div class="bill-card-container" style="width: 100%; height: 100%; padding: 12px; font-family: {{font_primary}}, system-ui, sans-serif; background-color: #ffffff; border: 3.5px solid #2563eb; border-radius: 14px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; page-break-inside: avoid;">
+  
+  <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; box-sizing: border-box; position: relative;">
+    <div style="display: flex; gap: 10px; align-items: center;">
+      <div style="width: 44px; height: 44px; border: 2px solid #2563eb; border-radius: 8px; padding: 2px; display: flex; justify-content: center; align-items: center; background: #ffffff; flex-shrink: 0;">
+        <img src="{{app_logo}}" style="max-width: 100%; max-height: 100%; object-fit: contain;" onerror="this.style.display='none'" />
       </div>
       <div>
-        <strong style="color: #0f172a; font-size: 16px; font-weight: 900; line-height: 1.2; letter-spacing: -0.5px; text-transform: uppercase; display: block;">{{app_name}}</strong>
-        <span style="font-size: 10px; color: #64748b; font-weight: 500; display: block; max-width: 150px; line-height: 1.2;">{{app_address}}</span>
+        <div style="font-family: {{font_secondary}}, sans-serif; font-size: 19px; font-weight: 900; color: #2563eb; line-height: 1.1; text-transform: uppercase; letter-spacing: -0.3px;">{{app_name}}</div>
+        <div style="font-family: {{font_primary}}, sans-serif; font-size: 10px; color: #2563eb; font-weight: 700; text-transform: uppercase; margin-top: 2px;">{{app_address}}</div>
       </div>
     </div>
-    <div style="text-align: right;">
-      <div style="background: #2563eb; color: white; padding: 4px 10px; border-radius: 20px; font-size: 9px; font-weight: 700; display: inline-block; margin-bottom: 4px; box-shadow: 0 2px 4px rgba(37,99,235,0.2);">TAGIHAN LISTRIK</div>
-      <div style="font-size: 10px; color: #64748b; font-weight: 800; display: block;">{{bulan_tagihan}}</div>
+    
+    <div style="position: absolute; top: -12px; right: -12px; background: #2563eb; color: #ffffff; padding: 12px 20px 12px 40px; font-size: 13px; font-weight: 800; text-align: right; min-width: 170px; line-height: 1.2; clip-path: polygon(15% 0%, 100% 0%, 100% 100%, 0% 100%); z-index: 10;">
+      Slip Tagihan <span style="color: #93c5fd; text-transform: uppercase; margin-left: 5px;">{{bulan_tagihan}}</span>
     </div>
   </div>
-  <div style="display: flex; gap: 16px; flex: 1; width: 100%;">
-    <div style="flex: 1.1; display: flex; flex-direction: column; gap: 12px;">
-      <div style="background: #f8fafc; padding: 12px; border-radius: 10px; border: 1px solid #f1f5f9; position: relative;">
-        <div style="position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: #2563eb;"></div>
-        <div style="color: #64748b; font-size: 9px; font-weight: 700; text-transform: uppercase; margin-bottom: 2px;">Data Pelanggan</div>
-        <strong style="font-size: 14px; font-weight: 800; color: #0f172a; display: block;">{{pelanggan_name}}</strong>
-        <span style="font-size: 10px; color: #64748b; font-family: monospace; font-weight: 600;">ID: {{pelanggan_id}}</span>
+
+  <div style="border-top: 2.5px dashed #2563eb; width: 100%; margin: 6px 0;"></div>
+
+  <div style="display: flex; gap: 16px; width: 100%; flex: 1; align-items: flex-start; box-sizing: border-box; margin-bottom: 4px;">
+    
+    <div style="width: 50%; display: flex; flex-direction: column; gap: 8px; box-sizing: border-box;">
+      <div style="background-color: #ffffff; border: 2px solid #2563eb; border-radius: 8px; padding: 11px 13px; box-sizing: border-box;">
+        <div style="font-family: {{font_primary}}, sans-serif; font-size: 10px; font-weight: 800; color: #2563eb; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">INFORMASI PELANGGAN</div>
+        <div style="font-family: {{font_secondary}}, sans-serif; font-size: 17px; font-weight: 900; color: #2563eb; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{pelanggan_name}}</div>
+        <div style="font-family: {{font_primary}}, sans-serif; font-size: 11px; color: #475569; font-weight: 700; margin-top: 4px;">ID PEL : {{pelanggan_id}}</div>
       </div>
-      <div style="display: flex; gap: 6px; width: 100%;">
-         <div style="flex: 1; background: #ffffff; padding: 8px; border-radius: 8px; border: 1.5px solid #e2e8f0;">
-           <span style="display: block; font-size: 8px; font-weight: 700; color: #64748b; margin-bottom: 2px;">USERNAME</span>
-           <strong style="color: #0f172a; font-family: monospace; font-size: 10px;">{{pelanggan_username}}</strong>
+      
+      <div style="display: flex; gap: 8px; width: 100%; box-sizing: border-box; align-items: flex-start;">
+         <div style="flex: 1.2; border: 1.5px solid #94a3b8; border-radius: 6px; padding: 6px 8px; box-sizing: border-box; background: #f8fafc; height: auto;">
+           <div style="font-family: {{font_primary}}, sans-serif; font-size: 9px; font-weight: 800; color: #475569; margin-bottom: 2px;">USERNAME</div>
+           <div style="font-family: {{font_primary}}, sans-serif; font-size: 11.5px; font-weight: 700; color: #0f172a; word-break: break-all;">{{pelanggan_username}}</div>
          </div>
-         <div style="flex: 1; background: #ffffff; padding: 8px; border-radius: 8px; border: 1.5px solid #e2e8f0;">
-           <span style="display: block; font-size: 8px; font-weight: 700; color: #64748b; margin-bottom: 2px;">PASSWORD</span>
-           <strong style="color: #0f172a; font-family: monospace; font-size: 10px;">{{pelanggan_password}}</strong>
+         <div style="flex: 0.8; border: 1.5px solid #94a3b8; border-radius: 6px; padding: 6px 8px; box-sizing: border-box; background: #f8fafc; height: auto;">
+           <div style="font-family: {{font_primary}}, sans-serif; font-size: 9px; font-weight: 800; color: #475569; margin-bottom: 2px;">PASSWORD</div>
+           <div style="font-family: {{font_primary}}, sans-serif; font-size: 11.5px; font-weight: 700; color: #0f172a;">{{pelanggan_password}}</div>
          </div>
       </div>
     </div>
-    <div style="flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
-      <div style="background: #ffffff; border-radius: 10px; padding: 0;">
-        <table style="width: 100%; border-collapse: collapse;">
-          <tr style="border-bottom: 1px solid #f1f5f9;"><td style="color: #64748b; font-size: 10px; padding: 4px 0; font-weight: 600;">Jalur</td><td style="text-align: right; font-size: 11px; font-weight: 800; color: #0f172a;">{{jalur_name}}</td></tr>
-          <tr style="border-bottom: 1px solid #f1f5f9;"><td style="color: #64748b; font-size: 10px; padding: 4px 0; font-weight: 600;">Tarif Daya</td><td style="text-align: right; font-size: 11px; font-weight: 800; color: #0f172a;">{{tarif_name}}</td></tr>
-          <tr style="border-bottom: 1px solid #f1f5f9;"><td style="color: #64748b; font-size: 10px; padding: 4px 0; font-weight: 600;">MCB</td><td style="text-align: right; font-size: 11px; font-weight: 800; color: #0f172a;">{{mcb}}</td></tr>
-          <tr style="border-bottom: 1px solid #f1f5f9;"><td style="color: #64748b; font-size: 10px; padding: 4px 0; font-weight: 600;">Total Tgl</td><td style="text-align: right; font-size: 11px; font-weight: 800; color: #0f172a;">{{total_hari_sebulan}} Hari</td></tr>
-          <tr style="border-bottom: 1px solid #f1f5f9;"><td style="color: #64748b; font-size: 10px; padding: 4px 0; font-weight: 600;">Mati Listrik</td><td style="text-align: right; font-size: 11px; font-weight: 800; color: #0f172a;">{{hari_mati_listrik}} Hari</td></tr>
-          <tr style="border-bottom: 1px solid #f1f5f9;"><td style="color: #64748b; font-size: 10px; padding: 4px 0; font-weight: 600;">Hidup Listrik</td><td style="text-align: right; font-size: 11px; font-weight: 800; color: #0f172a;">{{pemakaian_malam}} Malam</td></tr>
-          <tr style="border-bottom: 1px solid #f1f5f9;"><td style="color: #64748b; font-size: 10px; padding: 4px 0; font-weight: 600;">Tunggakan</td><td style="text-align: right; font-size: 10px; font-weight: 700; color: #ef4444;">{{tunggakan}}</td></tr>
-          <tr><td style="color: #64748b; font-size: 10px; padding: 4px 0; font-weight: 600;">Periode</td><td style="text-align: right; font-size: 10px; font-weight: 700; color: #0f172a;">{{rentang_tagihan}}</td></tr>
-        </table>
+
+    <div style="width: 50%; display: flex; flex-direction: column; box-sizing: border-box; gap: 4px;">
+      <table style="width: 100%; border-collapse: collapse; font-size: 11.5px; box-sizing: border-box;">
+        <tr style="border-bottom: 1.5px solid #e2e8f0;"><td style="color:#475569; padding: 2.5px 0; font-weight: 600;">Jalur</td><td style="text-align:right; font-weight:800; color:#0f172a;">{{jalur_name}}</td></tr>
+        <tr style="border-bottom: 1.5px solid #e2e8f0;"><td style="color:#475569; padding: 2.5px 0; font-weight: 600;">Tarif</td><td style="text-align:right; font-weight:800; color:#0f172a;">{{tarif_name}}</td></tr>
+        <tr style="border-bottom: 1.5px solid #e2e8f0;"><td style="color:#475569; padding: 2.5px 0; font-weight: 600;">MCB</td><td style="text-align:right; font-weight:800; color:#2563eb;">{{mcb}}</td></tr>
+        <tr style="border-bottom: 1.5px solid #e2e8f0;"><td style="color:#475569; padding: 2.5px 0; font-weight: 600;">Periode</td><td style="text-align:right; font-weight:800; color:#0f172a;">{{rentang_tagihan}}</td></tr>
+      </table>
+      
+      <div style="background-color: #fef2f2; border: 1px solid #fee2e2; border-radius: 5px; padding: 4px 6px; font-size: 9.5px; font-weight: 700; color: #475569; text-transform: uppercase; box-sizing: border-box; display: flex; justify-content: space-between; margin-top: 2px;">
+        <span>TUNGGAKAN: <span style="color: #ef4444; font-weight: 800;">{{tunggakan}}</span></span>
+        <span style="font-weight: 500; font-size: 8.5px; color: #94a3b8; text-transform: none;">S/D Bulan Lalu</span>
       </div>
-      <div style="background: #0f172a; border-radius: 10px; padding: 12px; margin-top: auto; color: white; display: flex; flex-direction: column; align-items: flex-end;">
-        <span style="font-size: 9px; font-weight: 600; color: #94a3b8; text-transform: uppercase;">Total Tagihan</span>
-        <div style="display: flex; align-items: flex-start; gap: 4px; margin-top: 2px;">
-          <span style="font-size: 10px; font-weight: 600; color: #94a3b8; margin-top: 2px;">Rp</span>
-          <strong style="font-size: 20px; font-weight: 800; letter-spacing: -0.5px; line-height: 1;">{{total_tagihan}}</strong>
+      
+      <div style="display: flex; justify-content: space-between; text-align: center; background: #ffffff; border: 2px solid #2563eb; border-radius: 8px; padding: 5px 4px; box-sizing: border-box;">
+        <div style="flex: 1;">
+          <div style="font-family: {{font_primary}}, sans-serif; font-size: 8px; font-weight: 800; color: #2563eb; line-height: 1;">TOTAL HARI</div>
+          <div style="font-family: {{font_secondary}}, sans-serif; font-size: 18px; font-weight: 900; color: #0f172a; margin: 2px 0 1px 0; line-height: 1;">{{total_hari_sebulan}}</div>
+          <div style="font-family: {{font_primary}}, sans-serif; font-size: 8px; font-weight: 700; color: #64748b; line-height: 1;">MALAM</div>
+        </div>
+        <div style="border-left: 1.5px dashed #2563eb;"></div>
+        <div style="flex: 1;">
+          <div style="font-family: {{font_primary}}, sans-serif; font-size: 8px; font-weight: 800; color: #ef4444; line-height: 1;">MATI LISTRIK</div>
+          <div style="font-family: {{font_secondary}}, sans-serif; font-size: 18px; font-weight: 900; color: #0f172a; margin: 2px 0 1px 0; line-height: 1;">{{hari_mati_listrik}}</div>
+          <div style="font-family: {{font_primary}}, sans-serif; font-size: 8px; font-weight: 700; color: #64748b; line-height: 1;">MALAM</div>
+        </div>
+        <div style="border-left: 1.5px dashed #2563eb;"></div>
+        <div style="flex: 1;">
+          <div style="font-family: {{font_primary}}, sans-serif; font-size: 8px; font-weight: 800; color: #16a34a; line-height: 1;">OPERASI LISTRIK</div>
+          <div style="font-family: {{font_secondary}}, sans-serif; font-size: 18px; font-weight: 900; color: #0f172a; margin: 2px 0 1px 0; line-height: 1;">{{pemakaian_malam}}</div>
+          <div style="font-family: {{font_primary}}, sans-serif; font-size: 8px; font-weight: 700; color: #64748b; line-height: 1;">MALAM</div>
         </div>
       </div>
     </div>
+
   </div>
-  <div style="margin-top: 12px; border-top: 1px solid #f1f5f9; padding-top: 10px; display: flex; justify-content: space-between; align-items: flex-end; width: 100%;">
-    <div>
-      <span style="font-size: 8px; font-weight: 800; color: #64748b; display: block; text-transform: uppercase;">Kolektor / Petugas</span>
-      <strong style="font-size: 11px; color: #0f172a; font-weight: 900; display: block; margin-top: 2px;">{{kolektor_name}}</strong>
+
+  <div style="margin-top: auto; display: flex; justify-content: space-between; align-items: flex-end; width: 100%; box-sizing: border-box; gap: 12px;">
+    
+    <div style="display: flex; flex-direction: column; gap: 5px; flex: 1; min-width: 0;">
+      <div style="display: flex; align-items: center; gap: 7px; background: #16a34a; color: white; padding: 7px 12px; border-radius: 8px; font-weight: bold; box-sizing: border-box; width: 100%;">
+        <svg style="width: 15px; height: 15px; fill: currentColor; flex-shrink: 0;" viewBox="0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.003 5.419 5.422 0 12.008 0c3.192.001 6.192 1.242 8.448 3.499 2.256 2.257 3.493 5.259 3.493 8.452-.003 6.583-5.422 12.001-12.007 12.001-1.994-.001-3.953-.502-5.713-1.455L0 24zm6.59-4.846c1.66.986 3.296 1.51 5.358 1.511 5.411 0 9.814-4.405 9.817-9.82.002-2.624-1.018-5.09-2.871-6.944-1.854-1.854-4.321-2.873-6.944-2.874-5.415 0-9.82 4.405-9.824 9.822-.001 2.096.549 4.14 1.595 5.894L1.764 22.23l4.883-1.276zM17.433 14.73c-.318-.159-1.884-.929-2.179-1.036-.294-.107-.509-.159-.723.159-.214.32-.829 1.036-1.016 1.25-.188.214-.374.241-.692.082-.318-.159-1.342-.493-2.556-1.577-.944-.842-1.581-1.883-1.766-2.199-.186-.317-.02-.489.139-.647.143-.142.318-.37.477-.556.159-.185.212-.317.318-.529.106-.212.053-.397-.026-.556-.079-.159-.723-1.742-.991-2.387-.261-.627-.527-.542-.723-.552-.186-.01-.399-.012-.612-.012-.214 0-.562.08-856.366c-.294.32-1.121 1.096-1.121 2.673 0 1.577 1.149 3.1 1.309 3.313.16.212 2.261 3.453 5.478 4.842.766.33 1.363.527 1.83.675.77.244 1.472.21 2.026.128.618-.092 1.884-.77 2.152-1.472.267-.703.267-1.306.188-1.433-.079-.127-.294-.209-.612-.368z"/></svg>
+        <span style="font-family: {{font_secondary}}, sans-serif; font-size: 11.5px; font-weight: 800; letter-spacing: 0.5px;">{{app_contact}}</span>
+      </div>
+      <div style="font-size: 8px; color: #94a3b8; font-weight: 600; padding-left: 2px;">Cetak: {{tgl_cetak}}</div>
     </div>
-    <div style="text-align: right; font-size: 8px; color: #94a3b8; font-weight: 600;">
-      <div style="margin-bottom: 2px;"><span style="color: #0f172a; font-weight: 800;">WA: {{app_contact}}</span></div>
-      Cetak: {{tgl_cetak}}
+    
+    <div style="text-align: center; flex: 0.8; display: flex; flex-direction: column; justify-content: space-between; height: 64px; min-width: 90px; box-sizing: border-box;">
+      <div style="font-size: 8.5px; font-weight: 800; color: #64748b; letter-spacing: 0.3px; text-transform: uppercase;">COLLECTOR,</div>
+      <div style="height: 38px;"></div> 
+      <div style="font-size: 10.5px; color: #2563eb; font-weight: 900; text-decoration: underline; text-transform: uppercase; letter-spacing: 0.2px;">{{kolektor_name}}</div>
     </div>
+
+    <div style="display: flex; align-items: center; gap: 10px; background: #2563eb; border-radius: 12px; padding: 10px 14px; color: white; min-width: 250px; box-sizing: border-box; justify-content: space-between;">
+      
+      <div style="width: 44px; height: 44px; background: #ffffff; border-radius: 6px; padding: 2px; display: flex; justify-content: center; align-items: center; flex-shrink: 0;">
+        <img src="{{qr_code}}" style="width: 100%; height: 100%; object-fit: contain;" onerror="this.src='https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=PLTD_IMM_ID_{{pelanggan_id}}'; this.onerror=null;" />
+      </div>
+
+      <div style="text-align: right; flex: 1;">
+        <span style="font-size: 10px; font-weight: 800; color: #bfdbfe; letter-spacing: 0.5px; display: block; margin-bottom: 3px;">TOTAL TAGIHAN</span>
+        <div style="display: flex; align-items: flex-start; justify-content: flex-end; gap: 3px;">
+          <span style="font-size: 13px; font-weight: 800; color: #ffffff; margin-top: 3px;">Rp.</span>
+          <strong style="font-size: 25px; font-weight: 900; line-height: 1; letter-spacing: -0.5px;">{{total_tagihan}}</strong>
+        </div>
+      </div>
+
+    </div>
+
   </div>
+
 </div>`;
       if (!template || !template.includes('{{tunggakan}}')) {
          template = defaultFallback;
       }
+
+      // Font Injection (Primary & Secondary)
+      template = template.replace(/\{\{font_primary\}\}/g, `'${primary}'`);
+      template = template.replace(/\{\{font_secondary\}\}/g, `'${secondary}'`);
+
+      // Backwards Compatibility
+      template = template.replace(/font-family: 'Inter'/g, `font-family: '${primary}'`);
+      template = template.replace(/font-family: monospace/g, `font-family: '${secondary}'`);
     
-    let htmlContent = `<div id="pdf-content">`;
+    // Build font stylesheet (Google & Base64 Uploads)
+    const fontsToLoad = new Set<string>();
+    const systemFonts = ['Inter', 'Roboto', 'Space Grotesk', 'JetBrains Mono', 'Outfit', 'Montserrat', 'Open Sans', 'monospace', 'Sriracha', 'Varela Round', 'Playfair Display', 'Kodchasan', 'Chakra Petch'];
+    
+    if (primary && systemFonts.includes(primary) && primary !== 'Inter' && primary !== 'monospace') fontsToLoad.add(primary);
+    if (secondary && systemFonts.includes(secondary) && secondary !== 'Inter' && secondary !== 'monospace') fontsToLoad.add(secondary);
+    
+    let fontStyles = '';
+    
+    // Google Fonts
+    const families = Array.from(fontsToLoad).map(f => `family=${f.replace(/ /g, '+')}:wght@400;700;800;900`).join('&');
+    if (families) {
+      fontStyles += `@import url('https://fonts.googleapis.com/css2?${families}&display=swap');\n`;
+    }
+    
+    // Custom URL or Uploaded Fonts
+    (f4Config.customFonts || []).forEach((font: any) => {
+      if (font.type === 'url') {
+        fontStyles += `@import url('${font.url}');\n`;
+      } else if (font.type === 'upload') {
+        fontStyles += `
+          @font-face {
+            font-family: '${font.family}';
+            src: url('${font.url}');
+            font-weight: normal;
+            font-style: normal;
+          }
+        `;
+      }
+    });
+
+    let htmlContent = `<div id="pdf-content">
+      <style>
+        ${fontStyles}
+        * { -webkit-print-color-adjust: exact; box-sizing: border-box; }
+        body { margin: 0; padding: 0; background-color: #ffffff; }
+        #pdf-content { width: ${f4Config.paperWidth}mm; background: white; }
+        .slip-container { position: absolute; overflow: hidden; }
+      </style>
+    `;
     const slipsPerPage = 4;
 
     for (let i = 0; i < details.length; i += slipsPerPage) {
@@ -155,7 +333,7 @@ export default function PrintPage({ onBack }: { onBack: () => void }) {
         slipHtml = slipHtml.replace(/\{\{pemakaian_malam\}\}/g, d.pemakaianHari.toString());
         slipHtml = slipHtml.replace(/\{\{tunggakan\}\}/g, `Rp ${tunggakan.toLocaleString('id-ID')}`);
         slipHtml = slipHtml.replace(/\{\{kolektor_name\}\}/g, d.kolektorName || 'Semua'); 
-        slipHtml = slipHtml.replace(/\{\{total_tagihan\}\}/g, (d.totalTagihan + tunggakan).toLocaleString('id-ID'));
+        slipHtml = slipHtml.replace(/\{\{total_tagihan\}\}/g, d.totalTagihan.toLocaleString('id-ID'));
         
         const row = Math.floor(idx / 2);
         const col = idx % 2;
@@ -168,11 +346,11 @@ export default function PrintPage({ onBack }: { onBack: () => void }) {
       });
       
       pageHtml += `
-        <div style="position: absolute; top: 50%; left: ${f4Config.marginLeft}mm; width: calc(100% - ${f4Config.marginLeft + f4Config.marginRight}mm); border-top: 1.5px dashed #94a3b8; display: flex; justify-content: center;">
-           <span style="background: white; padding: 0 10px; color: #94a3b8; font-size: 10px; margin-top: -7px;">✂️ Gunting disini</span>
+        <div style="position: absolute; display: flex; align-items: center; justify-content: center; pointer-events: none; top: 50%; left: ${f4Config.marginLeft}mm; width: calc(100% - ${f4Config.marginLeft + f4Config.marginRight}mm); border-top: 1.5px dashed #94a3b8; z-index: 0; transform: translateY(-50%);">
+           <div style="background: white; padding: 0 10px; color: #94a3b8; font-size: 10px;">✂️ Gunting disini</div>
         </div>
-        <div style="position: absolute; left: 50%; top: ${f4Config.marginTop}mm; height: calc(100% - ${f4Config.marginTop + f4Config.marginBottom}mm); border-left: 1.5px dashed #94a3b8; display: flex; flex-direction: column; align-items: center;">
-           <div style="background: white; padding: 10px 0; color: #94a3b8; font-size: 10px; margin-left: -6.5px; transform: rotate(-90deg); margin-top: 50px;">✂️</div>
+        <div style="position: absolute; display: flex; align-items: center; justify-content: center; flex-direction: column; pointer-events: none; left: 50%; top: ${f4Config.marginTop}mm; height: calc(100% - ${f4Config.marginTop + f4Config.marginBottom}mm); border-left: 1.5px dashed #94a3b8; z-index: 0; transform: translateX(-50%);">
+           <div style="background: white; padding: 10px 0; color: #94a3b8; font-size: 10px; transform: rotate(-90deg);">✂️</div>
         </div>
       `;
       
@@ -190,18 +368,23 @@ export default function PrintPage({ onBack }: { onBack: () => void }) {
     setTimeout(async () => {
       if (!printRef.current) return;
       
+      // Wait for all fonts to finish loading to ensure they render in PDF
+      await document.fonts.ready;
+      
       const opt = {
         margin: 0,
         filename: `Tagihan_${months[selectedPeriod?.month || 0]}_${selectedPeriod?.year}.pdf`,
-        image: { type: 'jpeg' as const, quality: 0.98 },
-        pagebreak: { mode: ['css'] },
+        image: { type: 'jpeg' as const, quality: 1.0 },
+        pagebreak: { mode: ['css', 'legacy'] },
         html2canvas: { 
-          scale: 2, 
+          scale: 3, 
           useCORS: true, 
           logging: false,
           letterRendering: true,
           backgroundColor: '#ffffff',
-          windowWidth: Math.max(1200, f4Config.paperWidth * 4) // Ensure canvas bounds are wide enough
+          windowWidth: 1247,
+          scrollX: 0,
+          scrollY: 0
         },
         jsPDF: { 
           unit: 'mm', 
@@ -218,8 +401,9 @@ export default function PrintPage({ onBack }: { onBack: () => void }) {
         showToast('Gagal membuat PDF', 'error');
       } finally {
         setIsGeneratingPdf(false);
+        setPdfRenderHtml('');
       }
-    }, 1500);
+    }, 3000);
 
   } catch (err) {
     console.error('PDF preparation failed:', err);
@@ -343,13 +527,12 @@ export default function PrintPage({ onBack }: { onBack: () => void }) {
       {/* Hidden container for PDF rendering */}
       <div 
         style={{
-          position: 'absolute',
-          top: '-9999px',
-          left: '-9999px',
+          position: 'fixed',
+          top: 0,
+          left: 0,
           width: `${f4Config.paperWidth}mm`,
-          opacity: 0,
           pointerEvents: 'none',
-          overflow: 'hidden'
+          zIndex: -9999
         }}
         aria-hidden="true"
       >

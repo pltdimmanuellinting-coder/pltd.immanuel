@@ -7,7 +7,7 @@
 
 @media print {
   @page {
-    size: 330mm 215mm landscape;
+    size: 215mm 330mm portrait;
     margin: 0;
   }
   
@@ -15,15 +15,15 @@
     visibility: hidden;
   }
   
-  #print-container, #print-container * {
+  #print-container, #print-container *, .print-area, .print-area * {
     visibility: visible;
   }
   
-  #print-container {
+  #print-container, .print-area {
     position: absolute;
     left: 0;
     top: 0;
-    width: 330mm;
+    width: 215mm;
     height: auto;
     background: white;
     visibility: visible !important;
@@ -31,6 +31,14 @@
 
   .no-print {
     display: none !important;
+  }
+
+  .page-break-before {
+    page-break-before: always;
+  }
+
+  .page-break-inside-avoid {
+    page-break-inside: avoid;
   }
 }
 
