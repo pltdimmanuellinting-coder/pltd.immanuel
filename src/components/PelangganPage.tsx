@@ -4,7 +4,7 @@ import { Pelanggan, Tarif, Jalur, Kolektor } from '../types';
 import { useAppContext } from '../context/AppContext';
 import PageHeader from './PageHeader';
 
-export default function PelangganPage({ onBack }: { onBack: () => void }) {
+export default function PelangganPage({ onBack, role }: { onBack: () => void, role?: string }) {
   const [activeTab, setActiveTab] = useState<'pelanggan' | 'tarif' | 'jalur' | 'kolektor'>('pelanggan');
 
   const {
@@ -20,6 +20,7 @@ export default function PelangganPage({ onBack }: { onBack: () => void }) {
   } = useAppContext();
 
   const [modal, setModal] = useState<{isOpen: boolean; mode: 'view'|'edit'|'add'; data: any}>({isOpen: false, mode: 'view', data: null});
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
 
   const handleAdd = () => {
     setModal({ isOpen: true, mode: 'add', data: { status: 'Aktif' } });
@@ -28,14 +29,19 @@ export default function PelangganPage({ onBack }: { onBack: () => void }) {
   const closeModal = () => setModal({isOpen: false, mode: 'view', data: null});
 
   const handleDelete = async (id: string) => {
-    if (window.confirm('Apakah Anda yakin ingin menghapus data ini?')) {
-      if (activeTab === 'pelanggan') await deletePelanggan(id);
-      if (activeTab === 'tarif') await deleteTarif(id);
-      if (activeTab === 'jalur') await deleteJalur(id);
-      if (activeTab === 'kolektor') await deleteKolektor(id);
-      showToast('Data berhasil dihapus');
-      closeModal();
-    }
+    setIsDeleteConfirmOpen(true);
+  };
+
+  const executeDelete = async () => {
+    const id = modal.data?.id;
+    if (!id) return;
+    if (activeTab === 'pelanggan') await deletePelanggan(id);
+    if (activeTab === 'tarif') await deleteTarif(id);
+    if (activeTab === 'jalur') await deleteJalur(id);
+    if (activeTab === 'kolektor') await deleteKolektor(id);
+    showToast('Data berhasil dihapus');
+    setIsDeleteConfirmOpen(false);
+    closeModal();
   };
 
   const generatePelangganId = () => {
@@ -138,32 +144,34 @@ export default function PelangganPage({ onBack }: { onBack: () => void }) {
       <PageHeader title="DATA PELANGGAN" onBack={onBack} />
       
       {/* Pill Style Tabs */}
-      <div className="px-4 py-3 bg-white border-b border-slate-100 z-10 shadow-sm shrink-0">
-        <div className="flex items-center gap-2">
-          <div className="flex-1 flex rounded-2xl bg-slate-100 p-1 shadow-inner h-11">
-            {[
-              { id: 'pelanggan', label: 'PELANGGAN' },
-              { id: 'jalur', label: 'JALUR' },
-              { id: 'tarif', label: 'TARIF' },
-              { id: 'kolektor', label: 'KOLEKTOR' }
-            ].map(tab => (
-              <button key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
-                className={`flex-1 px-1 py-2 text-[8px] font-black rounded-xl transition-all ${activeTab === tab.id ? 'bg-white shadow-md text-blue-700 font-black' : 'text-slate-500 hover:text-slate-700'}`}
-              >
-                {tab.label}
-              </button>
-            ))}
+      {role !== 'Kolektor' && (
+        <div className="px-4 py-3 bg-white border-b border-slate-100 z-10 shadow-sm shrink-0">
+          <div className="flex items-center gap-2">
+            <div className="flex-1 flex rounded-2xl bg-slate-100 p-1 shadow-inner h-11">
+              {[
+                { id: 'pelanggan', label: 'PELANGGAN' },
+                { id: 'jalur', label: 'JALUR' },
+                { id: 'tarif', label: 'TARIF' },
+                { id: 'kolektor', label: 'KOLEKTOR' }
+              ].map(tab => (
+                <button key={tab.id}
+                  onClick={() => setActiveTab(tab.id as any)}
+                  className={`flex-1 px-1 py-2 text-[8px] font-black rounded-xl transition-all ${activeTab === tab.id ? 'bg-white shadow-md text-blue-700 font-black' : 'text-slate-500 hover:text-slate-700'}`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+            <button 
+              onClick={exportToCSV}
+              title="Ekspor CSV"
+              className="w-11 h-11 bg-white border border-slate-200 text-slate-600 rounded-2xl flex items-center justify-center hover:bg-slate-50 transition-colors shadow-sm"
+            >
+              <Download size={20} />
+            </button>
           </div>
-          <button 
-            onClick={exportToCSV}
-            title="Ekspor CSV"
-            className="w-11 h-11 bg-white border border-slate-200 text-slate-600 rounded-2xl flex items-center justify-center hover:bg-slate-50 transition-colors shadow-sm"
-          >
-            <Download size={20} />
-          </button>
         </div>
-      </div>
+      )}
 
       {/* Content */}
       <div className="p-4 space-y-4 pb-32 flex-1 overflow-y-auto">
@@ -275,12 +283,14 @@ export default function PelangganPage({ onBack }: { onBack: () => void }) {
       </div>
 
       {/* Floating Action Button */}
-      <button 
-        onClick={handleAdd}
-        className="fixed bottom-[104px] right-6 w-14 h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg shadow-blue-900/20 flex items-center justify-center transition-transform hover:scale-105 active:scale-95 z-30"
-      >
-        <Plus size={28} />
-      </button>
+      {role !== 'Kolektor' && (
+        <button 
+          onClick={handleAdd}
+          className="fixed bottom-[104px] right-6 w-14 h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg shadow-blue-900/20 flex items-center justify-center transition-transform hover:scale-105 active:scale-95 z-30"
+        >
+          <Plus size={28} />
+        </button>
+      )}
 
       {/* Modal */}
       {modal.isOpen && (
@@ -456,14 +466,20 @@ export default function PelangganPage({ onBack }: { onBack: () => void }) {
 
             <div className="p-4 border-t border-slate-100 bg-white flex gap-3">
               {modal.mode === 'view' && (
-                <>
-                  <button onClick={() => handleDelete(modal.data.id)} className="flex-1 bg-red-50 text-red-600 font-bold py-3 rounded-xl border border-red-100 hover:bg-red-100 flex items-center justify-center gap-2 transition-colors">
-                    <Trash2 size={18} /> Hapus
+                role === 'Kolektor' ? (
+                  <button onClick={closeModal} className="flex-1 bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 transition-colors">
+                    Tutup
                   </button>
-                  <button onClick={() => setModal({...modal, mode: 'edit'})} className="flex-1 bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 flex items-center justify-center gap-2 shadow-lg shadow-blue-200 transition-colors">
-                    <Edit2 size={18} /> Edit
-                  </button>
-                </>
+                ) : (
+                  <>
+                    <button onClick={() => handleDelete(modal.data.id)} className="flex-1 bg-red-50 text-red-600 font-bold py-3 rounded-xl border border-red-100 hover:bg-red-100 flex items-center justify-center gap-2 transition-colors">
+                      <Trash2 size={18} /> Hapus
+                    </button>
+                    <button onClick={() => setModal({...modal, mode: 'edit'})} className="flex-1 bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 flex items-center justify-center gap-2 shadow-lg shadow-blue-200 transition-colors">
+                      <Edit2 size={18} /> Edit
+                    </button>
+                  </>
+                )
               )}
               {(modal.mode === 'edit' || modal.mode === 'add') && (
                 <>
@@ -475,6 +491,32 @@ export default function PelangganPage({ onBack }: { onBack: () => void }) {
                   </button>
                 </>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modern Delete Confirmation Dialog */}
+      {isDeleteConfirmOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl p-6 border border-slate-100 transition-all scale-100">
+            <h3 className="text-lg font-bold text-slate-800 mb-2">Hapus Data Ini?</h3>
+            <p className="text-sm text-slate-500 mb-6 leading-relaxed">
+              Apakah Anda yakin ingin menghapus data ini secara permanen? Tindakan ini tidak dapat dibatalkan.
+            </p>
+            <div className="flex gap-3">
+              <button 
+                onClick={() => setIsDeleteConfirmOpen(false)}
+                className="flex-1 px-4 py-3 rounded-xl text-slate-600 font-bold bg-slate-100 hover:bg-slate-200 transition-colors text-sm"
+              >
+                Batal
+              </button>
+              <button 
+                onClick={executeDelete}
+                className="flex-1 px-4 py-3 rounded-xl text-white font-bold bg-red-600 hover:bg-red-700 transition-colors text-sm flex justify-center items-center gap-1.5 shadow-lg shadow-red-500/10"
+              >
+                Ya, Hapus
+              </button>
             </div>
           </div>
         </div>

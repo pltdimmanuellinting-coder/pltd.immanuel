@@ -6,23 +6,35 @@ import PageHeader from './PageHeader';
 // @ts-ignore
 import html2pdf from 'html2pdf.js';
 
-export default function PrintPage({ onBack }: { onBack: () => void }) {
+export default function PrintPage({ onBack, selectedBill }: { onBack: () => void, selectedBill?: any }) {
   const { tagihanPeriods, f4Template, f4Config, appSettings, tagihanDetails, showToast, pelanggans, tarifs } = useAppContext();
   
-  const [printType, setPrintType] = useState<'f4' | 'thermal'>('f4');
-  const [selectedPeriodId, setSelectedPeriodId] = useState('');
+  const [printType, setPrintType] = useState<'f4' | 'thermal'>(selectedBill ? 'thermal' : 'f4');
+  const [selectedPeriodId, setSelectedPeriodId] = useState(selectedBill?.periodId || '');
+  const [printSingle, setPrintSingle] = useState(!!selectedBill);
   const [pageRange, setPageRange] = useState('');
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [pdfRenderHtml, setPdfRenderHtml] = useState('');
   const printRef = React.useRef<HTMLDivElement>(null);
 
-  const details = tagihanDetails
+  // Auto-init if detail provided
+  React.useEffect(() => {
+    if (selectedBill) {
+      setPrintType('thermal');
+      setSelectedPeriodId(selectedBill.periodId);
+      setPrintSingle(true);
+    }
+  }, [selectedBill]);
+
+  const allDetails = tagihanDetails
     .filter(d => d.periodId === selectedPeriodId)
     .sort((a, b) => {
       const indexA = pelanggans.findIndex(p => p.id === a.pelangganId);
       const indexB = pelanggans.findIndex(p => p.id === b.pelangganId);
       return indexA - indexB;
     });
+
+  const details = (selectedBill && printSingle) ? [selectedBill] : allDetails;
 
   const fontOptions = [
     { name: 'Default (Inter)', value: 'Inter' },
@@ -116,12 +128,12 @@ export default function PrintPage({ onBack }: { onBack: () => void }) {
     
     setIsGeneratingPdf(true);
     
-    try {
+      try {
       let template = f4Template;
       const primary = f4Config.primaryFont || 'Inter';
       const secondary = f4Config.secondaryFont || 'monospace';
       
-      const defaultFallback = `<div class="bill-card-container" style="width: 100%; height: 100%; padding: 12px; font-family: {{font_primary}}, system-ui, sans-serif; background-color: #ffffff; border: 3.5px solid #2563eb; border-radius: 14px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; page-break-inside: avoid;">
+      const defaultFallback = `<div class="bill-card-container" style="width: 100%; height: 100%; padding: 12px; font-family: {{font_primary}}, system-ui, sans-serif; background-color: #ffffff; border: 3.5px solid #2563eb; border-radius: 14px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; page-break-inside: avoid; position: relative;">
   
   <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; box-sizing: border-box; position: relative;">
     <div style="display: flex; gap: 10px; align-items: center;">
@@ -134,8 +146,8 @@ export default function PrintPage({ onBack }: { onBack: () => void }) {
       </div>
     </div>
     
-    <div style="position: absolute; top: -12px; right: -12px; background: #2563eb; color: #ffffff; padding: 12px 20px 12px 40px; font-size: 13px; font-weight: 800; text-align: right; min-width: 170px; line-height: 1.2; clip-path: polygon(15% 0%, 100% 0%, 100% 100%, 0% 100%); z-index: 10;">
-      Slip Tagihan <span style="color: #93c5fd; text-transform: uppercase; margin-left: 5px;">{{bulan_tagihan}}</span>
+    <div style="background-color: #2563eb; color: #ffffff; padding: 9px 40px 9px 36px; font-size: 13px; font-weight: 800; text-align: right; clip-path: polygon(10% 0, 100% 0, 90% 100%, 0 100%); min-width: 170px; box-sizing: border-box;">
+      Slip Tagihan <span style="color: #93c5fd; text-transform: uppercase;">{{bulan_tagihan}}</span>
     </div>
   </div>
 
@@ -233,7 +245,8 @@ export default function PrintPage({ onBack }: { onBack: () => void }) {
   </div>
 
 </div>`;
-      if (!template || !template.includes('{{tunggakan}}')) {
+      
+      if (!template || template.trim() === '') {
          template = defaultFallback;
       }
 
@@ -276,13 +289,41 @@ export default function PrintPage({ onBack }: { onBack: () => void }) {
       }
     });
 
+
     let htmlContent = `<div id="pdf-content">
       <style>
         ${fontStyles}
+        @page { size: ${f4Config.paperWidth}mm ${f4Config.paperHeight}mm; margin: 0; }
         * { -webkit-print-color-adjust: exact; box-sizing: border-box; }
         body { margin: 0; padding: 0; background-color: #ffffff; }
-        #pdf-content { width: ${f4Config.paperWidth}mm; background: white; }
-        .slip-container { position: absolute; overflow: hidden; }
+        .slip-grid { 
+           display: grid; 
+           grid-template-columns: repeat(2, 1fr); 
+           grid-template-rows: repeat(2, 1fr);
+           gap: ${Math.max(0, f4Config.gapY)}mm ${Math.max(0, f4Config.gapX)}mm;
+           width: ${f4Config.paperWidth}mm;
+           height: ${f4Config.paperHeight}mm;
+           padding: ${f4Config.marginTop}mm ${f4Config.marginRight}mm ${f4Config.marginBottom}mm ${f4Config.marginLeft}mm;
+           box-sizing: border-box;
+           position: relative;
+        }
+        .slip-grid::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: ${Math.max(0, f4Config.marginLeft)}mm;
+            right: ${Math.max(0, f4Config.marginRight)}mm;
+            border-top: 1px dashed #64748b;
+        }
+        .slip-grid::before {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: ${Math.max(0, f4Config.marginTop)}mm;
+            bottom: ${Math.max(0, f4Config.marginBottom)}mm;
+            border-left: 1px dashed #64748b;
+        }
+        .slip-item { overflow: hidden; width: 100%; height: 100%; position: relative; padding: 4px; }
       </style>
     `;
     const slipsPerPage = 4;
@@ -290,75 +331,60 @@ export default function PrintPage({ onBack }: { onBack: () => void }) {
     for (let i = 0; i < details.length; i += slipsPerPage) {
       const pageDetails = details.slice(i, i + slipsPerPage);
       
-      let pageHtml = `<div style="width: ${f4Config.paperWidth}mm; height: ${f4Config.paperHeight - 1}mm; position: relative; background: #ffffff; overflow: hidden; display: block; box-sizing: border-box;">`;
+      const isLastPage = (i + slipsPerPage) >= details.length;
+      htmlContent += `<div class="slip-grid" style="${isLastPage ? 'page-break-after: auto;' : 'page-break-after: always;'}">`;
       
-      pageDetails.forEach((d, idx) => {
-        let slipHtml = template;
-        
-        let mcbVal = '-';
-        const pel = pelanggans.find(p => p.id === d.pelangganId);
-        if (pel) {
-           const tar = tarifs.find(t => t.id === pel.tarifId);
-           if (tar && tar.mcb) mcbVal = tar.mcb;
-        }
+      for (let j = 0; j < slipsPerPage; j++) {
+         const d = pageDetails[j];
+         if (d) {
+            let slipHtml = template;
+            
+            let mcbVal = '-';
+            const pel = pelanggans.find(p => p.id === d.pelangganId);
+            if (pel) {
+               const tar = tarifs.find(t => t.id === pel.tarifId);
+               if (tar && tar.mcb) mcbVal = tar.mcb;
+            }
 
-        // Hitung Tunggakan
-        let tunggakan = 0;
-        const previousTagihans = tagihanDetails.filter(td => 
-          td.pelangganId === d.pelangganId && 
-          td.id !== d.id && 
-          td.status === 'Belum Lunas'
-        );
-        
-        // Sorting untuk mendapatkan tagihan lama sebelum period ini, asumsikan period name sortable or use ID (simple way: sum all "Belum Lunas" except current)
-        tunggakan = previousTagihans.reduce((sum, td) => sum + td.totalTagihan, 0);
+            // Hitung Tunggakan
+            const previousTagihans = tagihanDetails.filter(td => 
+              td.pelangganId === d.pelangganId && 
+              td.id !== d.id && 
+              td.status === 'Belum Lunas'
+            );
+            
+            const tunggakan = previousTagihans.reduce((sum, td) => sum + td.totalTagihan, 0);
 
-        slipHtml = slipHtml.replace(/\{\{pelanggan_name\}\}/g, d.snapshotPelangganName);
-        slipHtml = slipHtml.replace(/\{\{pelanggan_id\}\}/g, d.pelangganId);
-        slipHtml = slipHtml.replace(/\{\{pelanggan_username\}\}/g, d.snapshotPelangganUsername || '');
-        slipHtml = slipHtml.replace(/\{\{pelanggan_password\}\}/g, d.snapshotPelangganPassword || '');
-        slipHtml = slipHtml.replace(/\{\{app_logo\}\}/g, appSettings.logo || '');
-        slipHtml = slipHtml.replace(/\{\{app_name\}\}/g, appSettings.appName);
-        slipHtml = slipHtml.replace(/\{\{app_address\}\}/g, appSettings.address);
-        slipHtml = slipHtml.replace(/\{\{app_contact\}\}/g, appSettings.appContact || '-');
-        slipHtml = slipHtml.replace(/\{\{mcb\}\}/g, mcbVal);
-        slipHtml = slipHtml.replace(/\{\{tgl_cetak\}\}/g, new Date().toLocaleDateString('id-ID'));
-        slipHtml = slipHtml.replace(/\{\{bulan_tagihan\}\}/g, `${months[selectedPeriod?.month || 0]} ${selectedPeriod?.year}`);
-        const rentang = `5 ${months[((selectedPeriod?.month ?? 0) + 11) % 12].substring(0,3)} - 4 ${months[selectedPeriod?.month || 0].substring(0,3)}`;
-        slipHtml = slipHtml.replace(/\{\{rentang_tagihan\}\}/g, rentang);
-        slipHtml = slipHtml.replace(/\{\{jalur_name\}\}/g, d.snapshotJalurName || '-');
-        slipHtml = slipHtml.replace(/\{\{tarif_name\}\}/g, `Rp. ${d.snapshotTarifPrice.toLocaleString('id-ID')},- (${d.snapshotTarifName})`);
-        slipHtml = slipHtml.replace(/\{\{total_hari_sebulan\}\}/g, d.totalHariSebulan?.toString() || '0');
-        slipHtml = slipHtml.replace(/\{\{hari_mati_listrik\}\}/g, d.hariMatiListrik?.toString() || '0');
-        slipHtml = slipHtml.replace(/\{\{pemakaian_malam\}\}/g, d.pemakaianHari.toString());
-        slipHtml = slipHtml.replace(/\{\{tunggakan\}\}/g, `Rp ${tunggakan.toLocaleString('id-ID')}`);
-        slipHtml = slipHtml.replace(/\{\{kolektor_name\}\}/g, d.kolektorName || 'Semua'); 
-        slipHtml = slipHtml.replace(/\{\{total_tagihan\}\}/g, d.totalTagihan.toLocaleString('id-ID'));
-        
-        const row = Math.floor(idx / 2);
-        const col = idx % 2;
-        const width = (f4Config.paperWidth - f4Config.marginLeft - f4Config.marginRight - f4Config.gapX) / 2;
-        const height = (f4Config.paperHeight - f4Config.marginTop - f4Config.marginBottom - f4Config.gapY) / 2;
-        const top = f4Config.marginTop + (row * (height + f4Config.gapY));
-        const left = f4Config.marginLeft + (col * (width + f4Config.gapX));
-        
-        pageHtml += `<div style="position: absolute; width: ${width}mm; height: ${height}mm; top: ${top}mm; left: ${left}mm; box-sizing: border-box;">${slipHtml}</div>`;
-      });
-      
-      pageHtml += `
-        <div style="position: absolute; display: flex; align-items: center; justify-content: center; pointer-events: none; top: 50%; left: ${f4Config.marginLeft}mm; width: calc(100% - ${f4Config.marginLeft + f4Config.marginRight}mm); border-top: 1.5px dashed #94a3b8; z-index: 0; transform: translateY(-50%);">
-           <div style="background: white; padding: 0 10px; color: #94a3b8; font-size: 10px;">✂️ Gunting disini</div>
-        </div>
-        <div style="position: absolute; display: flex; align-items: center; justify-content: center; flex-direction: column; pointer-events: none; left: 50%; top: ${f4Config.marginTop}mm; height: calc(100% - ${f4Config.marginTop + f4Config.marginBottom}mm); border-left: 1.5px dashed #94a3b8; z-index: 0; transform: translateX(-50%);">
-           <div style="background: white; padding: 10px 0; color: #94a3b8; font-size: 10px; transform: rotate(-90deg);">✂️</div>
-        </div>
-      `;
-      
-      pageHtml += `</div>`;
-      if (i + slipsPerPage < details.length) {
-         pageHtml += `<div class="html2pdf__page-break"></div>`;
+            slipHtml = slipHtml.replace(/\{\{pelanggan_name\}\}/g, d.snapshotPelangganName);
+            slipHtml = slipHtml.replace(/\{\{pelanggan_id\}\}/g, d.pelangganId);
+            slipHtml = slipHtml.replace(/\{\{pelanggan_username\}\}/g, d.snapshotPelangganUsername || '');
+            slipHtml = slipHtml.replace(/\{\{pelanggan_password\}\}/g, d.snapshotPelangganPassword || '');
+            slipHtml = slipHtml.replace(/\{\{app_logo\}\}/g, appSettings.logo || '');
+            slipHtml = slipHtml.replace(/\{\{app_name\}\}/g, appSettings.appName);
+            slipHtml = slipHtml.replace(/\{\{app_address\}\}/g, appSettings.address);
+            slipHtml = slipHtml.replace(/\{\{app_contact\}\}/g, appSettings.appContact || '-');
+            slipHtml = slipHtml.replace(/\{\{mcb\}\}/g, mcbVal);
+            slipHtml = slipHtml.replace(/\{\{tgl_cetak\}\}/g, new Date().toLocaleDateString('id-ID'));
+            slipHtml = slipHtml.replace(/\{\{bulan_tagihan\}\}/g, `${months[selectedPeriod?.month || 0]} ${selectedPeriod?.year}`);
+            const rentang = `5 ${months[((selectedPeriod?.month ?? 0) + 11) % 12].substring(0,3)} - 4 ${months[selectedPeriod?.month || 0].substring(0,3)}`;
+            slipHtml = slipHtml.replace(/\{\{rentang_tagihan\}\}/g, rentang);
+            slipHtml = slipHtml.replace(/\{\{jalur_name\}\}/g, d.snapshotJalurName || '-');
+            slipHtml = slipHtml.replace(/\{\{tarif_name\}\}/g, `Rp. ${d.snapshotTarifPrice.toLocaleString('id-ID')},- (${d.snapshotTarifName})`);
+            slipHtml = slipHtml.replace(/\{\{total_hari_sebulan\}\}/g, d.totalHariSebulan?.toString() || '0');
+            slipHtml = slipHtml.replace(/\{\{hari_mati_listrik\}\}/g, d.hariMatiListrik?.toString() || '0');
+            slipHtml = slipHtml.replace(/\{\{pemakaian_malam\}\}/g, d.pemakaianHari.toString());
+            slipHtml = slipHtml.replace(/\{\{tunggakan\}\}/g, `Rp ${tunggakan.toLocaleString('id-ID')}`);
+            slipHtml = slipHtml.replace(/\{\{kolektor_name\}\}/g, d.kolektorName || 'Semua'); 
+            slipHtml = slipHtml.replace(/\{\{total_tagihan\}\}/g, d.totalTagihan.toLocaleString('id-ID'));
+            
+            htmlContent += `<div class="slip-item">${slipHtml}</div>`;
+         } else {
+            // Fill empty cells to maintain grid layout
+            htmlContent += `<div class="slip-item"></div>`;
+         }
       }
-      htmlContent += pageHtml;
+      
+      htmlContent += `</div>`;
     }
     
     htmlContent += `</div>`;
@@ -371,18 +397,20 @@ export default function PrintPage({ onBack }: { onBack: () => void }) {
       // Wait for all fonts to finish loading to ensure they render in PDF
       await document.fonts.ready;
       
+      const calculatedWindowWidth = Math.round((f4Config.paperWidth / 25.4) * 96);
+
       const opt = {
         margin: 0,
         filename: `Tagihan_${months[selectedPeriod?.month || 0]}_${selectedPeriod?.year}.pdf`,
         image: { type: 'jpeg' as const, quality: 1.0 },
         pagebreak: { mode: ['css', 'legacy'] },
         html2canvas: { 
-          scale: 3, 
+          scale: 2, 
           useCORS: true, 
           logging: false,
           letterRendering: true,
           backgroundColor: '#ffffff',
-          windowWidth: 1247,
+          windowWidth: calculatedWindowWidth,
           scrollX: 0,
           scrollY: 0
         },
@@ -414,19 +442,40 @@ export default function PrintPage({ onBack }: { onBack: () => void }) {
 
   const handlePrintThermal = () => {
     if (!selectedPeriodId) return alert('Pilih periode tagihan terlebih dahulu');
+    if (details.length === 0) return alert('Tidak ada data tagihan untuk dicetak');
     
-    const rentang = `5 ${months[((selectedPeriod?.month ?? 0) + 11) % 12].substring(0,3)} - 4 ${months[selectedPeriod?.month || 0].substring(0,3)}`;
-    let printText = `${appSettings.appName}\n${appSettings.address}\nWA: ${appSettings.appContact || '-'}\nTagihan ${months[selectedPeriod?.month || 0]} ${selectedPeriod?.year}\nPeriod: ${rentang}\n------------------------\n`;
-    const toPrint = details.slice(0, 3); // mock just a few
-    toPrint.forEach(d => {
-      printText += `Nama: ${d.snapshotPelangganName}\nTotal: Rp ${d.totalTagihan.toLocaleString('id-ID')}\n------------------------\n`;
+    let printText = '';
+    const divider = '--------------------------------\n';
+    const header = `${appSettings.appName.toUpperCase()}\n${appSettings.address}\nTelp/WA: ${appSettings.appContact || '-'}\n${divider}`;
+    
+    details.forEach(d => {
+      const rentang = `5 ${months[((selectedPeriod?.month ?? 0) + 11) % 12].substring(0,3)} - 4 ${months[selectedPeriod?.month || 0].substring(0,3)}`;
+      
+      printText += header;
+      printText += `SLIP TAGIHAN LISTRIK\n`;
+      printText += `Periode: ${months[selectedPeriod?.month || 0]} ${selectedPeriod?.year}\n`;
+      printText += `${divider}`;
+      printText += `NAMA : ${d.snapshotPelangganName}\n`;
+      printText += `ID   : ${d.pelangganId}\n`;
+      printText += `JALUR: ${d.snapshotJalurName}\n`;
+      printText += `${divider}`;
+      printText += `Tarif: ${d.snapshotTarifName}\n`;
+      printText += `Harga: Rp ${d.snapshotTarifPrice.toLocaleString('id-ID')}\n`;
+      printText += `Pemakaian: ${d.pemakaianHari} Malam\n`;
+      printText += `Tunggakan: Rp 0\n`;
+      printText += `${divider}`;
+      printText += `TOTAL TAGIHAN:\n`;
+      printText += `Rp ${d.totalTagihan.toLocaleString('id-ID')}\n`;
+      printText += `${divider}`;
+      printText += `Dicetak: ${new Date().toLocaleDateString('id-ID')}\n`;
+      printText += `KOLEKTOR: ${d.kolektorName || '-'}\n`;
+      printText += `\n\n\n`; // Spacing for tear
     });
-    printText += `\nSubtotal ${selectedCount} lembar dicetak.`;
 
-    // Try intent
-    alert('Memanggil aplikasi RawBT untuk mencetak ke thermal printer...\n\nData:\n' + printText);
+    // Alert for debug in preview
+    alert('Mencetak ke Thermal Printer via RawBT...');
     
-    // Fallback scheme (won't work in browser if rawbt not installed, but satisfies requirement)
+    // Trigger RawBT
     window.location.href = 'rawbt:' + encodeURIComponent(printText);
   };
 
@@ -470,7 +519,10 @@ export default function PrintPage({ onBack }: { onBack: () => void }) {
             <label className="text-xs text-slate-500 font-bold mb-1 block">Pilih Periode Tagihan</label>
             <select 
               value={selectedPeriodId} 
-              onChange={(e) => setSelectedPeriodId(e.target.value)}
+              onChange={(e) => {
+                setSelectedPeriodId(e.target.value);
+                setPrintSingle(false);
+              }}
               className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-medium outline-none focus:border-blue-500 transition-colors"
             >
               <option value="">-- Pilih Data Generate --</option>
@@ -479,6 +531,25 @@ export default function PrintPage({ onBack }: { onBack: () => void }) {
               ))}
             </select>
           </div>
+
+          {selectedBill && (
+            <div className="flex rounded-xl bg-slate-100 p-1 gap-1">
+              <button 
+                type="button"
+                onClick={() => setPrintSingle(true)}
+                className={`flex-1 py-1.5 px-2 text-[11px] font-bold rounded-lg transition-all line-clamp-1 ${printSingle ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                Slip {selectedBill.snapshotPelangganName}
+              </button>
+              <button 
+                type="button"
+                onClick={() => setPrintSingle(false)}
+                className={`flex-1 py-1.5 px-2 text-[11px] font-bold rounded-lg transition-all line-clamp-1 ${!printSingle ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                Semua ({allDetails.length})
+              </button>
+            </div>
+          )}
 
           {selectedPeriodId && (
             <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3 flex justify-between items-center">
@@ -527,12 +598,13 @@ export default function PrintPage({ onBack }: { onBack: () => void }) {
       {/* Hidden container for PDF rendering */}
       <div 
         style={{
-          position: 'fixed',
+          position: 'absolute',
           top: 0,
-          left: 0,
+          left: '-9999px',
           width: `${f4Config.paperWidth}mm`,
           pointerEvents: 'none',
-          zIndex: -9999
+          zIndex: -9999,
+          background: '#ffffff'
         }}
         aria-hidden="true"
       >

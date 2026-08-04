@@ -28,6 +28,8 @@ export default function GenerateTagihanPage({ onBack }: { onBack: () => void }) 
     }));
   };
 
+  const [overwriteConfirm, setOverwriteConfirm] = useState<{ isOpen: boolean; existingPeriodId: string } | null>(null);
+
   const calculateDays = () => {
     const start = new Date(selectedYear, selectedMonth - 1, 5);
     const end = new Date(selectedYear, selectedMonth, 4);
@@ -38,19 +40,24 @@ export default function GenerateTagihanPage({ onBack }: { onBack: () => void }) 
 
   const totalDays = useMemo(() => calculateDays(), [selectedMonth, selectedYear]);
 
-  const handleGenerate = async () => {
+  const handleGenerate = () => {
     const existing = tagihanPeriods.find(p => p.month === selectedMonth && p.year === selectedYear);
     if (existing) {
-      if(!window.confirm('Tagihan periode ini sudah ada. Menimpa akan menghapus data lama. Lanjutkan?')) {
-        return;
-      }
-      setIsGenerating(true);
-      await deleteTagihanPeriod(existing.id);
+      setOverwriteConfirm({ isOpen: true, existingPeriodId: existing.id });
     } else {
-      setIsGenerating(true);
+      executeGeneration();
     }
+  };
+
+  const executeGeneration = async (deleteExistingId?: string) => {
+    setIsGenerating(true);
+    setOverwriteConfirm(null);
 
     try {
+      if (deleteExistingId) {
+        await deleteTagihanPeriod(deleteExistingId);
+      }
+
       const periodId = 'tp-' + Date.now();
       let computedTotalAmount = 0;
       const detailsToSave: TagihanDetail[] = [];
@@ -108,10 +115,10 @@ export default function GenerateTagihanPage({ onBack }: { onBack: () => void }) 
   };
 
   return (
-    <div className="flex flex-col h-[100dvh] bg-white relative overflow-hidden">
+    <div className="flex flex-col h-full bg-white relative">
       <PageHeader title="GENERATE TAGIHAN" onBack={onBack} />
 
-      <div className="flex-1 overflow-hidden flex flex-col p-4 space-y-3">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-40">
         {/* Period Selection */}
         <div className="bg-white rounded-xl p-3 shadow-sm border border-slate-200 shrink-0">
           <h2 className="text-[10px] font-black text-slate-800 mb-2 flex items-center gap-2 uppercase tracking-tight">
@@ -137,12 +144,12 @@ export default function GenerateTagihanPage({ onBack }: { onBack: () => void }) 
         </div>
 
         {/* Mati Listrik Input */}
-        <div className="bg-white rounded-xl p-3 shadow-sm border border-slate-200 flex-1 flex flex-col min-h-0">
+        <div className="bg-white rounded-xl p-3 shadow-sm border border-slate-200">
           <h2 className="text-[10px] font-black text-slate-800 mb-2 flex items-center gap-2 uppercase tracking-tight shrink-0">
             <Calculator size={12} className="text-red-500" />
             Pengurangan Mati Listrik per Jalur
           </h2>
-          <div className="flex-1 overflow-y-auto space-y-1.5 pr-1 custom-scrollbar">
+          <div className="space-y-1.5 mt-2">
             {jalurs.map(j => {
               const daysOff = matiListrik[j.id] || 0;
               return (
@@ -169,6 +176,32 @@ export default function GenerateTagihanPage({ onBack }: { onBack: () => void }) 
           {isGenerating ? <Loader2 className="animate-spin" size={18} /> : <><FileOutput size={18} /> GENERATE TAGIHAN</>}
         </button>
       </div>
+
+      {/* Modern Overwrite Confirmation Dialog */}
+      {overwriteConfirm?.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl p-6 border border-slate-100 transition-all scale-100">
+            <h3 className="text-lg font-bold text-slate-800 mb-2">Periode Sudah Ada</h3>
+            <p className="text-sm text-slate-500 mb-6 leading-relaxed">
+              Tagihan untuk periode ini sudah ada di sistem. Menimpa data ini akan menghapus dan membuat ulang semua tagihan pelanggan pada periode ini secara permanen. Lanjutkan?
+            </p>
+            <div className="flex gap-3">
+              <button 
+                onClick={() => setOverwriteConfirm(null)}
+                className="flex-1 px-4 py-3 rounded-xl text-slate-600 font-bold bg-slate-100 hover:bg-slate-200 transition-colors text-sm"
+              >
+                Batal
+              </button>
+              <button 
+                onClick={() => executeGeneration(overwriteConfirm.existingPeriodId)}
+                className="flex-1 px-4 py-3 rounded-xl text-white font-bold bg-blue-600 hover:bg-blue-700 transition-colors text-sm flex justify-center items-center gap-1.5 shadow-lg shadow-blue-500/10"
+              >
+                Ya, Timpa Data
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

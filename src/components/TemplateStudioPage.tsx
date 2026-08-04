@@ -6,7 +6,8 @@ import PageHeader from './PageHeader';
 export default function TemplateStudioPage({ onBack }: { onBack: () => void }) {
   const { appSettings, showToast, f4Template, setF4Template, f4Config, setF4Config, savePrintSettings } = useAppContext();
   const [activeCanvas, setActiveCanvas] = useState<'F4' | 'Thermal'>('F4');
-  const [viewMode, setViewMode] = useState<'editor' | 'preview'>('editor');
+  const [viewMode, setViewMode] = useState<'editor' | 'preview' | 'split'>('split');
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
   
   // Real F4 Dimensions in mm (330 x 215 for Landscape)
   const [config, setConfig] = useState(f4Config);
@@ -43,21 +44,21 @@ export default function TemplateStudioPage({ onBack }: { onBack: () => void }) {
   const slipWidth = availableWidth / 2;
   const slipHeight = availableHeight / 2;
 
-  const defaultHtml = `<div class="bill-card-container" style="width: 100%; height: 100%; padding: 12px; font-family: {{font_primary}}, system-ui, sans-serif; background-color: #ffffff; border: 3.5px solid #2563eb; border-radius: 14px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; position: relative; page-break-inside: avoid;">
+  const defaultHtml = `<div class="bill-card-container" style="width: 100%; height: 100%; padding: 12px; font-family: 'Inter', system-ui, sans-serif; background-color: #ffffff; border: 3.5px solid #2563eb; border-radius: 14px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden;">
   
-  <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; box-sizing: border-box; position: relative;">
+  <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; box-sizing: border-box;">
     <div style="display: flex; gap: 10px; align-items: center;">
       <div style="width: 44px; height: 44px; border: 2px solid #2563eb; border-radius: 8px; padding: 2px; display: flex; justify-content: center; align-items: center; background: #ffffff; flex-shrink: 0;">
         <img src="{{app_logo}}" style="max-width: 100%; max-height: 100%; object-fit: contain;" onerror="this.style.display='none'" />
       </div>
       <div>
-        <div style="font-family: {{font_secondary}}, sans-serif; font-size: 19px; font-weight: 900; color: #2563eb; line-height: 1.1; text-transform: uppercase; letter-spacing: -0.3px;">{{app_name}}</div>
-        <div style="font-family: {{font_primary}}, sans-serif; font-size: 10px; color: #2563eb; font-weight: 700; text-transform: uppercase; margin-top: 2px;">{{app_address}}</div>
+        <div style="font-size: 19px; font-weight: 900; color: #2563eb; line-height: 1.1; text-transform: uppercase; letter-spacing: -0.3px;">{{app_name}}</div>
+        <div style="font-size: 10px; color: #2563eb; font-weight: 700; text-transform: uppercase; margin-top: 2px;">{{app_address}}</div>
       </div>
     </div>
     
-    <div style="position: absolute; top: -12px; right: -12px; background: #2563eb; color: #ffffff; padding: 12px 20px 12px 40px; font-size: 13px; font-weight: 800; text-align: right; min-width: 170px; line-height: 1.2; clip-path: polygon(15% 0%, 100% 0%, 100% 100%, 0% 100%); z-index: 10;">
-      Slip Tagihan <span style="color: #93c5fd; text-transform: uppercase; margin-left: 5px;">{{bulan_tagihan}}</span>
+    <div style="background-color: #2563eb; color: #ffffff; padding: 9px 20px 9px 36px; font-size: 13px; font-weight: 800; text-align: right; clip-path: polygon(15% 0, 100% 0, 100% 100%, 0 100%); margin-right: -13px; min-width: 170px; box-sizing: border-box;">
+      Slip Tagihan <span style="color: #93c5fd; text-transform: uppercase;">{{bulan_tagihan}}</span>
     </div>
   </div>
 
@@ -67,19 +68,19 @@ export default function TemplateStudioPage({ onBack }: { onBack: () => void }) {
     
     <div style="width: 50%; display: flex; flex-direction: column; gap: 8px; box-sizing: border-box;">
       <div style="background-color: #ffffff; border: 2px solid #2563eb; border-radius: 8px; padding: 11px 13px; box-sizing: border-box;">
-        <div style="font-family: {{font_primary}}, sans-serif; font-size: 10px; font-weight: 800; color: #2563eb; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">INFORMASI PELANGGAN</div>
-        <div style="font-family: {{font_secondary}}, sans-serif; font-size: 17px; font-weight: 900; color: #2563eb; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{pelanggan_name}}</div>
-        <div style="font-family: {{font_primary}}, sans-serif; font-size: 11px; color: #475569; font-weight: 700; margin-top: 4px;">ID PEL : {{pelanggan_id}}</div>
+        <div style="font-size: 10px; font-weight: 800; color: #2563eb; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">INFORMASI PELANGGAN</div>
+        <div style="font-size: 17px; font-weight: 900; color: #2563eb; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{pelanggan_name}}</div>
+        <div style="font-size: 11px; font-family: monospace; color: #475569; font-weight: 700; margin-top: 4px;">ID PEL : {{pelanggan_id}}</div>
       </div>
       
       <div style="display: flex; gap: 8px; width: 100%; box-sizing: border-box; align-items: flex-start;">
          <div style="flex: 1.2; border: 1.5px solid #94a3b8; border-radius: 6px; padding: 6px 8px; box-sizing: border-box; background: #f8fafc; height: auto;">
-           <div style="font-family: {{font_primary}}, sans-serif; font-size: 9px; font-weight: 800; color: #475569; margin-bottom: 2px;">USERNAME</div>
-           <div style="font-family: {{font_primary}}, sans-serif; font-size: 11.5px; font-weight: 700; color: #0f172a; word-break: break-all;">{{pelanggan_username}}</div>
+           <div style="font-size: 9px; font-weight: 800; color: #475569; margin-bottom: 2px;">USERNAME</div>
+           <div style="font-size: 11.5px; font-family: monospace; font-weight: 700; color: #0f172a; word-break: break-all;">{{pelanggan_username}}</div>
          </div>
          <div style="flex: 0.8; border: 1.5px solid #94a3b8; border-radius: 6px; padding: 6px 8px; box-sizing: border-box; background: #f8fafc; height: auto;">
-           <div style="font-family: {{font_primary}}, sans-serif; font-size: 9px; font-weight: 800; color: #475569; margin-bottom: 2px;">PASSWORD</div>
-           <div style="font-family: {{font_primary}}, sans-serif; font-size: 11.5px; font-weight: 700; color: #0f172a;">{{pelanggan_password}}</div>
+           <div style="font-size: 9px; font-weight: 800; color: #475569; margin-bottom: 2px;">PASSWORD</div>
+           <div style="font-size: 11.5px; font-family: monospace; font-weight: 700; color: #0f172a;">{{pelanggan_password}}</div>
          </div>
       </div>
     </div>
@@ -280,20 +281,13 @@ export default function TemplateStudioPage({ onBack }: { onBack: () => void }) {
   }, [config.primaryFont, config.secondaryFont, config.customFonts]);
 
   return (
-    <div className="flex flex-col h-full bg-white relative pb-10">
+    <div className="flex flex-col h-full bg-white relative overflow-hidden">
       <PageHeader 
         title="TEMPLATE STUDIO" 
         onBack={onBack} 
         rightAction={
           <div className="flex gap-2">
-            <button onClick={() => {
-              if(window.confirm('Reset template F4 ke versi modern default?')) {
-                setHtmlCodeF4(defaultHtml);
-                setF4Template(defaultHtml);
-                savePrintSettings(defaultHtml, config);
-                showToast('Template di-reset');
-              }
-            }} className="text-slate-500 font-bold p-2 px-3 text-[10px] bg-slate-100 rounded-xl hover:bg-slate-200 transition-colors uppercase flex items-center justify-center">
+            <button onClick={() => setShowResetConfirm(true)} className="text-slate-500 font-bold p-2 px-3 text-[10px] bg-slate-100 rounded-xl hover:bg-slate-200 transition-colors uppercase flex items-center justify-center">
               Reset
             </button>
             <button onClick={handleSave} className="text-white font-black p-2 px-4 text-[10px] bg-emerald-500 rounded-xl flex items-center gap-2 hover:bg-emerald-600 shadow-xl shadow-emerald-500/30 active:scale-95 transition-all uppercase">
@@ -303,7 +297,7 @@ export default function TemplateStudioPage({ onBack }: { onBack: () => void }) {
         }
       />
 
-      <div className="p-4 flex flex-col pt-4 pb-20 space-y-4">
+      <div className="p-4 flex flex-col pt-4 pb-48 space-y-4 flex-1 overflow-y-auto">
         {/* Canvas Selector */}
         <div className="flex rounded-xl bg-slate-200 p-1">
           <button 
@@ -321,18 +315,24 @@ export default function TemplateStudioPage({ onBack }: { onBack: () => void }) {
         </div>
 
         {/* View Mode Toggle under main tabs */}
-        <div className="flex bg-white rounded-lg border border-slate-200 overflow-hidden text-xs font-bold divide-x shadow-sm">
+        <div className="flex bg-white rounded-lg border border-slate-200 overflow-hidden text-[11px] font-bold divide-x shadow-sm">
+           <button 
+             onClick={() => setViewMode('split')} 
+             className={`flex-1 py-2.5 flex justify-center items-center gap-1.5 ${viewMode === 'split' ? 'bg-[#0000ff] text-white' : 'text-slate-500 hover:bg-slate-50'}`}
+           >
+             <Columns size={14} /> Split View
+           </button>
            <button 
              onClick={() => setViewMode('preview')} 
-             className={`flex-1 py-2 flex justify-center items-center gap-2 ${viewMode === 'preview' ? 'bg-blue-50 text-blue-700' : 'text-slate-500 hover:bg-slate-50'}`}
+             className={`flex-1 py-2.5 flex justify-center items-center gap-1.5 ${viewMode === 'preview' ? 'bg-[#0000ff] text-white' : 'text-slate-500 hover:bg-slate-50'}`}
            >
-             <Eye size={16} /> Live Preview
+             <Eye size={14} /> Preview
            </button>
            <button 
              onClick={() => setViewMode('editor')} 
-             className={`flex-1 py-2 flex justify-center items-center gap-2 ${viewMode === 'editor' ? 'bg-slate-800 text-white' : 'text-slate-500 hover:bg-slate-50'}`}
+             className={`flex-1 py-2.5 flex justify-center items-center gap-1.5 ${viewMode === 'editor' ? 'bg-[#0000ff] text-white' : 'text-slate-500 hover:bg-slate-50'}`}
            >
-             <Code size={16} /> HTML Editor
+             <Code size={14} /> Editor HTML
            </button>
         </div>
 
@@ -534,12 +534,78 @@ export default function TemplateStudioPage({ onBack }: { onBack: () => void }) {
         )}
 
         {/* The Workspace Area */}
-        <div className="flex-1 flex flex-col pt-2 min-h-[400px]">
-          {viewMode === 'preview' ? (
+        <div className="flex-1 flex flex-col pt-2 min-h-[450px] gap-4">
+          {viewMode === 'split' && (
+            <div className="flex-1 flex flex-col gap-4">
+              {/* Split Preview Pane */}
+              <div className="bg-slate-200 rounded-xl border-4 border-slate-300 h-[240px] flex flex-col items-center justify-center p-3 overflow-hidden relative group shrink-0">
+                <span className="absolute top-2 left-2 text-[10px] uppercase font-black text-slate-400 opacity-60 z-10">Live Preview (Split View)</span>
+                {activeCanvas === 'F4' && (
+                  <div className="absolute top-2 right-2 flex gap-1 z-10 opacity-50 group-hover:opacity-100 transition-opacity font-mono">
+                    <button onClick={() => setZoomF4(prev => Math.max(0.1, prev - 0.05))} className="bg-white text-slate-700 w-6 h-6 rounded flex items-center justify-center font-bold text-xs shadow hover:bg-blue-50 transition-colors">-</button>
+                    <button onClick={() => setZoomF4(prev => Math.min(1, prev + 0.05))} className="bg-white text-slate-700 w-6 h-6 rounded flex items-center justify-center font-bold text-xs shadow hover:bg-blue-50 transition-colors">+</button>
+                  </div>
+                )}
+                {activeCanvas === 'F4' ? (
+                  <div className="w-full relative flex justify-center items-start overflow-auto h-full" style={{ minHeight: '180px' }}>
+                    <div 
+                      className="bg-white shadow-lg overflow-hidden shrink-0 origin-top"
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(2, 1fr)',
+                        gridTemplateRows: 'repeat(2, 1fr)',
+                        gap: `${config.gapY}mm ${config.gapX}mm`,
+                        width: `${config.paperWidth}mm`,
+                        height: `${config.paperHeight}mm`,
+                        padding: `${config.marginTop}mm ${config.marginRight}mm ${config.marginBottom}mm ${config.marginLeft}mm`,
+                        boxSizing: 'border-box',
+                        transform: `scale(${zoomF4 - 0.1})`,
+                        transformOrigin: 'top center'
+                      }}
+                    >
+                      {[1, 2, 3, 4].map((i) => (
+                        <div key={i} className="bg-white overflow-hidden w-full h-full relative"
+                          dangerouslySetInnerHTML={{ __html: parseTemplate(htmlCodeF4) }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="w-full relative flex justify-center items-start overflow-auto h-full" style={{ minHeight: '180px' }}>
+                    <div 
+                      className="bg-white shadow-xl min-h-[150px] shrink-0 origin-top" 
+                      style={{ 
+                        width: `${thermalWidth}mm`,
+                        transform: 'scale(0.85)',
+                        transformOrigin: 'top center'
+                      }} 
+                      dangerouslySetInnerHTML={{ __html: parseTemplate(htmlCodeThermal) }}
+                    ></div>
+                  </div>
+                )}
+              </div>
+
+              {/* Split Editor Pane */}
+              <div className="flex-1 flex flex-col bg-slate-900 rounded-xl shadow border border-slate-700 overflow-hidden min-h-[220px]">
+                <div className="bg-slate-800 text-slate-300 text-[10px] px-3 py-1.5 font-mono flex justify-between rounded-t-xl shrink-0">
+                   <span>{activeCanvas === 'F4' ? 'editor_f4.html' : 'editor_thermal.html'}</span>
+                   <span className="text-emerald-400 font-bold text-[9px]">Live Sync Active</span>
+                </div>
+                <textarea
+                  className="flex-1 w-full bg-slate-900 text-slate-100 p-3 font-mono text-[11px] outline-none resize-none leading-relaxed"
+                  value={activeCanvas === 'F4' ? htmlCodeF4 : htmlCodeThermal}
+                  onChange={(e) => activeCanvas === 'F4' ? setHtmlCodeF4(e.target.value) : setHtmlCodeThermal(e.target.value)}
+                  spellCheck={false}
+                ></textarea>
+              </div>
+            </div>
+          )}
+
+          {viewMode === 'preview' && (
              <div className="bg-slate-200 rounded-xl border-4 border-slate-300 flex-1 flex flex-col items-center justify-center p-4 overflow-hidden relative group">
                <span className="absolute top-2 left-2 text-[10px] uppercase font-black text-slate-400 opacity-60 z-10">Live Preview</span>
                {activeCanvas === 'F4' && (
-                 <div className="absolute top-2 right-2 flex gap-1 z-10 opacity-50 group-hover:opacity-100 transition-opacity">
+                 <div className="absolute top-2 right-2 flex gap-1 z-10 opacity-50 group-hover:opacity-100 transition-opacity font-mono">
                    <button onClick={() => setZoomF4(prev => Math.max(0.1, prev - 0.05))} className="bg-white text-slate-700 w-8 h-8 rounded-lg shadow font-bold text-lg hover:bg-blue-50 transition-colors">-</button>
                    <button onClick={() => setZoomF4(prev => Math.min(1, prev + 0.05))} className="bg-white text-slate-700 w-8 h-8 rounded-lg shadow font-bold text-lg hover:bg-blue-50 transition-colors">+</button>
                  </div>
@@ -549,50 +615,23 @@ export default function TemplateStudioPage({ onBack }: { onBack: () => void }) {
                     <div 
                       className="bg-white shadow-lg overflow-hidden shrink-0 origin-top"
                       style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(2, 1fr)',
+                        gridTemplateRows: 'repeat(2, 1fr)',
+                        gap: `${config.gapY}mm ${config.gapX}mm`,
                         width: `${config.paperWidth}mm`,
                         height: `${config.paperHeight}mm`,
-                        paddingTop: `${config.marginTop}mm`,
-                        paddingBottom: `${config.marginBottom}mm`,
-                        paddingLeft: `${config.marginLeft}mm`,
-                        paddingRight: `${config.marginRight}mm`,
-                        position: 'relative',
-                        transform: `scale(${zoomF4})`, // Custom scale
+                        padding: `${config.marginTop}mm ${config.marginRight}mm ${config.marginBottom}mm ${config.marginLeft}mm`,
+                        boxSizing: 'border-box',
+                        transform: `scale(${zoomF4})`,
                         transformOrigin: 'top center'
                       }}
                     >
                       {[1, 2, 3, 4].map((i) => (
-                        <div key={i} className="absolute bg-white overflow-hidden"
-                          style={{
-                            width: `${slipWidth}mm`,
-                            height: `${slipHeight}mm`,
-                            top: i > 2 ? `${config.marginTop + slipHeight + config.gapY}mm` : `${config.marginTop}mm`,
-                            left: i % 2 === 0 ? `${config.marginLeft + slipWidth + config.gapX}mm` : `${config.marginLeft}mm`,
-                          }}
+                        <div key={i} className="bg-white overflow-hidden w-full h-full relative"
                           dangerouslySetInnerHTML={{ __html: parseTemplate(htmlCodeF4) }}
                         />
                       ))}
-                      
-                      {/* Horizontal Cut Line */}
-                      <div className="absolute flex items-center justify-center pointer-events-none" style={{
-                         top: '50%',
-                         left: `${config.marginLeft}mm`,
-                         width: `calc(100% - ${config.marginLeft + config.marginRight}mm)`,
-                         borderTop: '1.5px dashed #94a3b8',
-                         zIndex: 0
-                      }}>
-                         <div className="bg-white px-2 py-0 text-[#94a3b8] text-[8px] sm:text-[10px] -mt-[14px]">✂️ Gunting disini</div>
-                      </div>
-                      
-                      {/* Vertical Cut Line */}
-                      <div className="absolute flex items-center justify-center flex-col pointer-events-none" style={{
-                         left: '50%',
-                         top: `${config.marginTop}mm`,
-                         height: `calc(100% - ${config.marginTop + config.marginBottom}mm)`,
-                         borderLeft: '1.5px dashed #94a3b8',
-                         zIndex: 0
-                      }}>
-                         <div className="bg-white py-2 px-0 text-[#94a3b8] text-[8px] sm:text-[10px] -ml-[14px]" style={{ transform: 'rotate(-90deg)' }}>✂️</div>
-                      </div>
                     </div>
                   </div>
                ) : (
@@ -609,7 +648,9 @@ export default function TemplateStudioPage({ onBack }: { onBack: () => void }) {
                   </div>
                )}
              </div>
-          ) : (
+          )}
+
+          {viewMode === 'editor' && (
             <div className="flex-1 flex flex-col h-full bg-slate-900 rounded-xl shadow border border-slate-700 overflow-hidden">
               <div className="bg-slate-800 text-slate-300 text-xs px-3 py-2 font-mono flex justify-between rounded-t-xl">
                  <span>{activeCanvas === 'F4' ? 'editor_f4.html' : 'editor_thermal.html'}</span>
@@ -625,6 +666,38 @@ export default function TemplateStudioPage({ onBack }: { onBack: () => void }) {
           )}
         </div>
       </div>
+
+      {/* Modern Reset Confirmation Dialog */}
+      {showResetConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl p-6 border border-slate-100 transition-all scale-100">
+            <h3 className="text-lg font-bold text-slate-800 mb-2">Reset Template?</h3>
+            <p className="text-sm text-slate-500 mb-6 leading-relaxed">
+              Apakah Anda yakin ingin mereset layout cetak template F4 ini kembali ke versi modern standar? Layout yang Anda sesuaikan saat ini akan terhapus.
+            </p>
+            <div className="flex gap-3">
+              <button 
+                onClick={() => setShowResetConfirm(false)}
+                className="flex-1 px-4 py-3 rounded-xl text-slate-600 font-bold bg-slate-100 hover:bg-slate-200 transition-colors text-sm"
+              >
+                Batal
+              </button>
+              <button 
+                onClick={() => {
+                  setHtmlCodeF4(defaultHtml);
+                  setF4Template(defaultHtml);
+                  savePrintSettings(defaultHtml, config);
+                  showToast('Template berhasil di-reset');
+                  setShowResetConfirm(false);
+                }}
+                className="flex-1 px-4 py-3 rounded-xl text-white font-bold bg-blue-600 hover:bg-blue-700 transition-colors text-sm flex justify-center items-center gap-1.5 shadow-lg shadow-blue-500/10"
+              >
+                Ya, Reset
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

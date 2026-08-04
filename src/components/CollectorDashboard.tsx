@@ -2,7 +2,7 @@ import React from 'react';
 import { ClipboardList, History, CheckCircle, Clock, MapPin, Search } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 
-export default function CollectorDashboard({ onNavigate }: { onNavigate: (tab: any) => void }) {
+export default function CollectorDashboard({ onNavigate }: { onNavigate: (tab: any, period?: any) => void }) {
   const { currentUser, tagihanDetails, tagihanPeriods } = useAppContext();
   
   // Stats for collector
@@ -50,23 +50,40 @@ export default function CollectorDashboard({ onNavigate }: { onNavigate: (tab: a
         </h3>
         <div className="grid grid-cols-2 gap-3">
           <button 
-            onClick={() => onNavigate('tagihan')}
-            className="flex flex-col items-center justify-center p-5 bg-slate-50 rounded-2xl border border-slate-100 border-dashed hover:border-blue-300 hover:bg-blue-50/30 transition-all"
+            onClick={() => {
+              // Sort periods descending by year then month to find the latest monthly period generated
+              const latestPeriod = tagihanPeriods && tagihanPeriods.length > 0
+                ? [...tagihanPeriods].sort((a, b) => {
+                    if (a.year !== b.year) return b.year - a.year;
+                    return b.month - a.month;
+                  })[0]
+                : null;
+              onNavigate('tagihan_latest', latestPeriod);
+            }}
+            className="flex flex-col items-center justify-center gap-3 p-5 bg-white rounded-2xl border border-slate-200 shadow-sm hover:border-blue-500 hover:bg-blue-50/10 transition-all group active:scale-[0.98] h-full"
           >
-            <div className="w-12 h-12 bg-blue-600 text-white rounded-xl flex items-center justify-center mb-2 shadow-lg shadow-blue-100">
-               <History size={24} />
+            <div className="w-12 h-12 bg-blue-600 text-white rounded-xl flex items-center justify-center shadow-lg shadow-blue-100 group-hover:scale-110 transition-transform">
+               <ClipboardList size={24} />
             </div>
-            <span className="text-[10px] font-black text-slate-700 uppercase">Riwayat Tagihan</span>
+            <div className="text-center">
+              <span className="text-sm font-black text-slate-800 uppercase block leading-tight">Tagihan</span>
+              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide mt-1 block">Bulan Terakhir</span>
+            </div>
           </button>
 
           <button 
-            onClick={() => onNavigate('tagihan')}
-            className="flex flex-col items-center justify-center p-5 bg-slate-50 rounded-2xl border border-slate-100 border-dashed hover:border-emerald-300 hover:bg-emerald-50/30 transition-all"
+            onClick={() => {
+              onNavigate('tagihan_history');
+            }}
+            className="flex flex-col items-center justify-center gap-3 p-5 bg-white rounded-2xl border border-slate-200 shadow-sm hover:border-emerald-500 hover:bg-emerald-50/10 transition-all group active:scale-[0.98] h-full"
           >
-            <div className="w-12 h-12 bg-emerald-500 text-white rounded-xl flex items-center justify-center mb-2 shadow-lg shadow-emerald-100">
-               <Clock size={24} />
+            <div className="w-12 h-12 bg-emerald-600 text-white rounded-xl flex items-center justify-center shadow-lg shadow-emerald-100 group-hover:scale-110 transition-transform">
+               <History size={24} />
             </div>
-            <span className="text-[10px] font-black text-slate-700 uppercase">Tagihan Pending</span>
+            <div className="text-center">
+              <span className="text-sm font-black text-slate-800 uppercase block leading-tight">Riwayat Tagihan</span>
+              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide mt-1 block">List Generate</span>
+            </div>
           </button>
         </div>
       </div>

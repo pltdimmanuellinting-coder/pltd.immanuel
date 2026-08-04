@@ -21,6 +21,14 @@ export default function PembukuanPage({ onBack }: { onBack: () => void }) {
 
   const activePelanggans = pelanggans.filter(p => p.status === 'Aktif').sort((a, b) => a.name.localeCompare(b.name));
 
+  function chunkArray<T>(arr: T[], size: number): T[][] {
+    const chunks: T[][] = [];
+    for (let i = 0; i < arr.length; i += size) {
+      chunks.push(arr.slice(i, i + size));
+    }
+    return chunks;
+  }
+
   const styles = `
     <style>
       @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800;900&family=JetBrains+Mono:wght@700&display=swap');
@@ -29,27 +37,33 @@ export default function PembukuanPage({ onBack }: { onBack: () => void }) {
       .f4-page { 
         width: 215mm; 
         height: 330mm; 
-        padding: 15mm; 
+        padding: 8mm 12mm; 
         background: white; 
         position: relative; 
         overflow: hidden;
         font-family: 'Inter', sans-serif;
         page-break-after: always;
       }
-      .header-kop { text-align: center; border-bottom: 4px double #2563eb; padding-bottom: 5mm; margin-bottom: 6mm; }
-      .header-kop h1 { margin: 0; font-size: 24pt; color: #2563eb; text-transform: uppercase; font-weight: 900; letter-spacing: -1px; }
-      .header-kop p { margin: 5px 0 0 0; font-size: 11pt; color: #475569; font-weight: 800; text-transform: uppercase; }
+      .header-kop { text-align: center; border-bottom: 2.5px double #2563eb; padding-bottom: 1mm; margin-bottom: 1.5mm; }
+      .header-kop h1 { margin: 0; font-size: 11pt; color: #2563eb; text-transform: uppercase; font-weight: 900; letter-spacing: -0.5px; }
+      .header-kop p { margin: 1px 0 0 0; font-size: 7.5pt; color: #475569; font-weight: 800; text-transform: uppercase; }
       
-      table { width: 100%; border-collapse: collapse; margin-top: 5mm; font-size: 8.5pt; }
-      th { background-color: #f1f5f9; border: 1px solid #64748b; padding: 6px 3px; text-transform: uppercase; font-weight: 900; color: #0f172a; font-size: 7.5pt; }
-      td { border: 1px solid #94a3b8; padding: 6px 4px; color: #1e293b; }
+      table { width: 100%; border-collapse: collapse; margin-top: 1mm; font-size: 6.8pt; }
+      th { background-color: #f1f5f9; border: 1px solid #64748b; padding: 1.5px 2px; text-transform: uppercase; font-weight: 900; color: #0f172a; font-size: 6.5pt; line-height: 1.05; }
+      td { border: 1px solid #94a3b8; padding: 1.5px 3px; color: #1e293b; line-height: 1.05; }
       .text-center { text-align: center; }
       .text-right { text-align: right; }
       .font-black { font-weight: 900; }
       
-      .signature-area { margin-top: 10mm; display: flex; justify-content: flex-end; }
-      .signature-box { width: 60mm; text-align: center; font-size: 10pt; }
-      .signature-name { border-bottom: 2px solid #000; margin-top: 18mm; font-weight: 900; text-transform: uppercase; display: inline-block; min-width: 45mm; }
+      /* Compact styling for single-page deliverables */
+      .compact-report { padding: 4mm 6mm !important; }
+      .compact-table { margin-top: 0.5mm !important; }
+      .compact-table th { font-size: 5.5pt !important; padding: 0.8px 1px !important; line-height: 1.05 !important; }
+      .compact-table td { font-size: 5.5pt !important; padding: 0.8px 2px !important; line-height: 1.05 !important; }
+      
+      .signature-area { margin-top: 4mm; display: flex; justify-content: flex-end; }
+      .signature-box { width: 60mm; text-align: center; font-size: 7.5pt; }
+      .signature-name { border-bottom: 1.5px solid #000; margin-top: 8mm; font-weight: 900; text-transform: uppercase; display: inline-block; min-width: 45mm; }
     </style>
   `;
 
@@ -84,14 +98,15 @@ export default function PembukuanPage({ onBack }: { onBack: () => void }) {
 
   const generateDataPelanggan = () => {
     setIsGeneratingPdf(true);
-    const html = `
-      <html><head>${styles}</head><body>
-      <div class="f4-page">
+    let html = `<html><head>${styles}</head><body>`;
+    
+    html += `
+      <div class="f4-page compact-report">
         <div class="header-kop">
           <h1>DATA MASTER PELANGGAN AKTIF</h1>
           <p>${appSettings.appName} - TAHUN ${selectedYear}</p>
         </div>
-        <table>
+        <table class="compact-table">
           <thead>
             <tr>
               <th width="35">NO</th>
@@ -120,8 +135,9 @@ export default function PembukuanPage({ onBack }: { onBack: () => void }) {
           </tbody>
         </table>
       </div>
-      </body></html>
     `;
+
+    html += `</body></html>`;
     downloadPdf(html, `Data_Pelanggan_${selectedYear}.pdf`);
   };
 
@@ -130,35 +146,45 @@ export default function PembukuanPage({ onBack }: { onBack: () => void }) {
     
     let html = `<html><head>${styles}</head><body>`;
 
-    // 1. COVER
+    // 1. COVER (Scaled down elements securely to fit beautifully on F4)
     html += `
-      <div class="f4-page" style="border: 10px double #2563eb; display: flex; flex-direction: column; justify-content: center; align-items: center;">
-         ${appSettings.logo ? `<img src="${appSettings.logo}" style="width: 70mm; height: 70mm; object-fit: contain; margin-bottom: 20mm;" />` : ''}
-         <h1 style="font-size: 56pt; color: #2563eb; font-weight: 950; margin: 0;">BUKU TAHUNAN</h1>
-         <h2 style="font-size: 32pt; color: #1e293b; margin: 10mm 0; font-weight: 800;">ADMINISTRASI PENAGIHAN</h2>
-         <div style="width: 150mm; height: 5px; background: #2563eb; margin: 15mm auto;"></div>
-         <h3 style="font-size: 26pt; color: #2563eb; font-weight: 900; text-transform: uppercase;">${appSettings.appName}</h3>
-         <p style="font-size: 22pt; font-weight: 900; color: #000; margin-top: 30mm;">TAHUN ${selectedYear}</p>
+      <div class="f4-page" style="border: 8px double #2563eb; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 10mm 15mm; box-sizing: border-box;">
+         ${appSettings.logo ? `<img src="${appSettings.logo}" style="width: 32mm; height: 32mm; object-fit: contain; margin-bottom: 6mm;" />` : ''}
+         <h1 style="font-size: 22pt; color: #2563eb; font-weight: 950; margin: 0; text-align: center; line-height: 1.1; text-transform: uppercase; letter-spacing: -0.5px;">BUKU TAHUNAN</h1>
+         <h2 style="font-size: 13pt; color: #1e293b; margin: 4mm 0; font-weight: 800; text-align: center; letter-spacing: 0.5px;">ADMINISTRASI PENAGIHAN</h2>
+         <div style="width: 90mm; height: 2.5px; background: #2563eb; margin: 5mm auto;"></div>
+         <h3 style="font-size: 11pt; color: #2563eb; font-weight: 900; text-transform: uppercase; text-align: center; margin: 0;">${appSettings.appName}</h3>
+         <p style="font-size: 10pt; font-weight: 900; color: #000; margin-top: 10mm; text-align: center;">TAHUN ${selectedYear}</p>
       </div>
       <div class="html2pdf__page-break"></div>
     `;
 
     // 2. DATA PELANGGAN
-    html += `
-      <div class="f4-page">
-        <div class="header-kop"><h1>DATA INDUK PELANGGAN</h1></div>
-        <table>
-          <thead><tr><th width="35">NO</th><th>NAMA PELANGGAN</th><th width="100">ID</th><th width="100">USERNAME</th><th width="100">JALUR</th></tr></thead>
-          <tbody>${activePelanggans.map((p, i) => {
-            const jal = jalurs.find(j => j.id === p.jalurId)?.name || '-';
-            return `<tr><td class="text-center">${i+1}</td><td class="font-black">${p.name.toUpperCase()}</td><td class="text-center">${p.id}</td><td class="text-center">${p.username}</td><td class="text-center">${jal}</td></tr>`;
-          }).join('')}</tbody>
-        </table>
-      </div>
-      <div class="html2pdf__page-break"></div>
-    `;
+    const dataPelangganChunks = chunkArray(activePelanggans, 38) as any[][];
+    dataPelangganChunks.forEach((chunk, pageIdx) => {
+      html += `
+        <div class="f4-page">
+          <div class="header-kop">
+            <h1>DATA INDUK PELANGGAN</h1>
+            <p>${appSettings.appName} - TAHUN ${selectedYear}</p>
+          </div>
+          <table>
+            <thead><tr><th width="35">NO</th><th>NAMA PELANGGAN</th><th width="100">ID</th><th width="100">USERNAME</th><th width="100">JALUR</th></tr></thead>
+            <tbody>${chunk.map((p, idx) => {
+              const jal = jalurs.find(j => j.id === p.jalurId)?.name || '-';
+              const absoluteIndex = pageIdx * 38 + idx + 1;
+              return `<tr><td class="text-center">${absoluteIndex}</td><td class="font-black" style="text-transform: uppercase;">${p.name}</td><td class="text-center">${p.id}</td><td class="text-center">${p.username}</td><td class="text-center">${jal}</td></tr>`;
+            }).join('')}</tbody>
+          </table>
+          <div style="position: absolute; bottom: 15mm; right: 15mm; font-size: 8pt; color: #64748b; font-weight: bold;">
+            Bagian I - Halaman ${pageIdx + 1} dari ${dataPelangganChunks.length}
+          </div>
+        </div>
+        <div class="html2pdf__page-break"></div>
+      `;
+    });
 
-    // 3. PAYMENT BLOCKS
+    // 3. PAYMENT BLOCKS (PAGINATED CHUNKS OF 38 PER PAGE)
     const paymentBlocks = [
       { name: "JANUARI - APRIL", range: [0, 1, 2, 3] },
       { name: "MEI - AGUSTUS", range: [4, 5, 6, 7] },
@@ -166,36 +192,51 @@ export default function PembukuanPage({ onBack }: { onBack: () => void }) {
     ];
 
     paymentBlocks.forEach(block => {
-      html += `
-        <div class="f4-page">
-          <div class="header-kop"><h1>REKAP PEMBAYARAN (${block.name})</h1></div>
-          <table>
-            <thead>
-              <tr>
-                <th width="30">NO</th>
-                <th>NAMA PELANGGAN</th>
-                ${block.range.map(mIdx => `<th>${months[mIdx].toUpperCase()}</th>`).join('')}
-              </tr>
-            </thead>
-            <tbody>
-              ${activePelanggans.map((p, i) => `
+      const paymentChunks = chunkArray(activePelanggans, 38) as any[][];
+      paymentChunks.forEach((chunk, pageIdx) => {
+        html += `
+          <div class="f4-page">
+            <div class="header-kop">
+              <h1>REKAP PEMBAYARAN (${block.name})</h1>
+              <p>${appSettings.appName} - TAHUN ${selectedYear}</p>
+            </div>
+            <table>
+              <thead>
                 <tr>
-                  <td class="text-center">${i+1}</td>
-                  <td class="font-black">${p.name.toUpperCase()}</td>
-                  <td></td><td></td><td></td><td></td>
+                  <th width="30">NO</th>
+                  <th>NAMA PELANGGAN</th>
+                  ${block.range.map(mIdx => `<th>${months[mIdx].toUpperCase()}</th>`).join('')}
                 </tr>
-              `).join('')}
-            </tbody>
-          </table>
-        </div>
-        <div class="html2pdf__page-break"></div>
-      `;
+              </thead>
+              <tbody>
+                ${chunk.map((p, idx) => {
+                  const absoluteIndex = pageIdx * 38 + idx + 1;
+                  return `
+                    <tr>
+                      <td class="text-center">${absoluteIndex}</td>
+                      <td class="font-black" style="text-transform: uppercase;">${p.name}</td>
+                      <td></td><td></td><td></td><td></td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+            <div style="position: absolute; bottom: 15mm; right: 15mm; font-size: 8pt; color: #64748b; font-weight: bold;">
+              Rekap ${block.name} - Halaman ${pageIdx + 1} dari ${paymentChunks.length}
+            </div>
+          </div>
+          <div class="html2pdf__page-break"></div>
+        `;
+      });
     });
 
     // 4. OPERASI
     html += `
       <div class="f4-page">
-        <div class="header-kop"><h1>REKAPITULASI OPERASIONAL LISTRIK</h1></div>
+        <div class="header-kop">
+          <h1>REKAPITULASI OPERASIONAL LISTRIK</h1>
+          <p>${appSettings.appName} - TAHUN ${selectedYear}</p>
+        </div>
         <table style="font-size: 7.5pt;">
           <thead>
             <tr>
@@ -228,41 +269,50 @@ export default function PembukuanPage({ onBack }: { onBack: () => void }) {
     if (!selectedPeriodId) return showToast('Pilih periode bulan dahulu', 'error');
     setIsGeneratingPdf(true);
     const targetPeriod = tagihanPeriods.find(p => p.id === selectedPeriodId);
+    const targetMonthName = months[targetPeriod?.month || 0].toUpperCase();
     
-    const html = `
-      <html><head>${styles}</head><body>
-      <div class="f4-page">
+    let html = `<html><head>${styles}</head><body>`;
+    
+    // We adjust the row height dynamically based on active tenants so they fit nicely on 1 F4 sheet
+    const totalCount = activePelanggans.length || 1;
+    const computedRowHeightMm = Math.max(3.8, Math.min(10.0, 240 / totalCount));
+    
+    html += `
+      <div class="f4-page compact-report">
         <div class="header-kop">
           <h1>BLANKO PENAGIHAN KOSONG (PER-KOLEKTOR)</h1>
-          <p>${appSettings.appName} - ${months[targetPeriod?.month || 0].toUpperCase()} ${targetPeriod?.year}</p>
+          <p>${appSettings.appName} - ${targetMonthName} ${targetPeriod?.year}</p>
         </div>
-        <div style="margin-bottom: 5mm; display: flex; justify-content: space-between; font-size: 10pt;">
+        <div style="margin-bottom: 2mm; display: flex; justify-content: space-between; font-size: 7pt; font-weight: bold;">
            <span>Nama Kolektor: .......................................</span>
            <span>Tanggal Penagihan: ....................</span>
         </div>
-        <table>
+        <table class="compact-table">
           <thead>
             <tr>
               <th width="35">NO</th>
               <th>NAMA PELANGGAN</th>
-              <th width="120">TAGIHAN</th>
-              <th width="120">DIBAYAR</th>
+              <th width="115">TAGIHAN</th>
+              <th width="115">DIBAYAR</th>
               <th>PARAF / KET</th>
             </tr>
           </thead>
           <tbody>
-            ${activePelanggans.map((p, i) => `
-              <tr style="height: 10mm;">
-                <td class="text-center">${i+1}</td>
-                <td class="font-black">${p.name.toUpperCase()}</td>
-                <td></td><td></td><td></td>
-              </tr>
-            `).join('')}
+            ${activePelanggans.map((p, idx) => {
+              return `
+                <tr style="height: ${computedRowHeightMm}mm;">
+                  <td class="text-center">${idx + 1}</td>
+                  <td class="font-black" style="text-transform: uppercase;">${p.name}</td>
+                  <td></td><td></td><td></td>
+                </tr>
+              `;
+            }).join('')}
           </tbody>
         </table>
       </div>
-      </body></html>
     `;
+
+    html += `</body></html>`;
     downloadPdf(html, `Blanko_Kosong_${months[targetPeriod?.month || 0]}.pdf`);
   };
 
@@ -271,33 +321,35 @@ export default function PembukuanPage({ onBack }: { onBack: () => void }) {
     setIsGeneratingPdf(true);
     const targetPeriod = tagihanPeriods.find(p => p.id === selectedPeriodId);
     const details = tagihanDetails.filter(d => d.periodId === selectedPeriodId);
+    const targetMonthName = months[targetPeriod?.month || 0].toUpperCase();
 
-    const html = `
-      <html><head>${styles}</head><body>
-      <div class="f4-page">
+    let html = `<html><head>${styles}</head><body>`;
+
+    html += `
+      <div class="f4-page compact-report">
         <div class="header-kop">
           <h1>LAPORAN BULANAN REALISASI TAGIHAN</h1>
-          <p>${appSettings.appName} - ${months[targetPeriod?.month || 0].toUpperCase()} ${targetPeriod?.year}</p>
+          <p>${appSettings.appName} - ${targetMonthName} ${targetPeriod?.year}</p>
         </div>
-        <table>
+        <table class="compact-table">
           <thead>
             <tr>
               <th width="35">NO</th>
               <th>NAMA PELANGGAN</th>
-              <th width="120">NOMINAL TAGIHAN</th>
-              <th width="100">STATUS</th>
+              <th width="115">NOMINAL TAGIHAN</th>
+              <th width="90">STATUS</th>
               <th>RESI / KET</th>
             </tr>
           </thead>
           <tbody>
-            ${activePelanggans.map((p, i) => {
+            ${activePelanggans.map((p, idx) => {
               const d = details.find(td => td.pelangganId === p.id);
               return `
                 <tr>
-                  <td class="text-center">${i+1}</td>
-                  <td class="font-black">${p.name.toUpperCase()}</td>
+                  <td class="text-center">${idx + 1}</td>
+                  <td class="font-black" style="text-transform: uppercase;">${p.name}</td>
                   <td class="text-right">${(d?.totalTagihan || 0).toLocaleString('id-ID')}</td>
-                  <td class="text-center font-black" style="color: ${d?.status === 'Lunas' ? '#16a34a' : '#ef4444'}">${d?.status || '-'}</td>
+                  <td class="text-center font-black" style="color: ${d?.status === 'Lunas' ? '#16a34a' : '#ef4444'}">${d?.status || 'Belum Lunas'}</td>
                   <td></td>
                 </tr>
               `;
@@ -305,8 +357,9 @@ export default function PembukuanPage({ onBack }: { onBack: () => void }) {
           </tbody>
         </table>
       </div>
-      </body></html>
     `;
+
+    html += `</body></html>`;
     downloadPdf(html, `Laporan_Bulanan_${months[targetPeriod?.month || 0]}.pdf`);
   };
 
@@ -369,7 +422,7 @@ export default function PembukuanPage({ onBack }: { onBack: () => void }) {
       )}
 
       {/* Hidden Render Container */}
-      <div style={{ position: 'fixed', top: 0, left: 0, width: '215mm', pointerEvents: 'none', zIndex: -9999, backgroundColor: 'white' }} aria-hidden="true">
+      <div style={{ position: 'absolute', top: 0, left: '-9999px', width: '215mm', pointerEvents: 'none', zIndex: -9999, backgroundColor: 'white' }} aria-hidden="true">
         <div ref={printRef} dangerouslySetInnerHTML={{ __html: pdfRenderHtml }} />
       </div>
     </div>

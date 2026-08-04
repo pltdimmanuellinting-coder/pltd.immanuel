@@ -41,6 +41,9 @@ export default function App() {
   const [passwordConfirm, setPasswordConfirm] = useState('');
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
 
+  const [selectedBillForPrint, setSelectedBillForPrint] = useState<any>(null);
+  const [tagihanInitialPeriod, setTagihanInitialPeriod] = useState<any>(null);
+
   useEffect(() => {
     if (currentUser) {
       setProfileName(currentUser.name || '');
@@ -182,12 +185,12 @@ export default function App() {
       case 'home':
         if (role === 'Operator') {
           return (
-            <div className="relative h-full flex flex-col">
+            <div className="relative flex flex-col min-h-full pb-32">
               <OperatorDashboard 
                 onNavigate={setCurrentTab} 
                 onSeedData={seedInitialData}
               />
-              <div className="mt-auto p-6 pb-2 text-left">
+              <div className="p-6 pb-2 text-left">
                 <div className="flex items-center gap-2 text-[#0000ff] font-black text-xs">
                   <span className="bg-[#0000ff] text-white px-1.5 py-0.5 rounded text-[8px]">WA</span>
                   {appSettings.appContact || '-'}
@@ -196,11 +199,25 @@ export default function App() {
             </div>
           );
         }
-        if (role === 'Kolektor') return <CollectorDashboard onNavigate={setCurrentTab} />;
+        if (role === 'Kolektor') return (
+          <CollectorDashboard 
+            onNavigate={(tab, period) => {
+              if (tab === 'tagihan_latest') {
+                setTagihanInitialPeriod(period);
+                setCurrentTab('tagihan');
+              } else if (tab === 'tagihan_history') {
+                setTagihanInitialPeriod(null);
+                setCurrentTab('tagihan');
+              } else {
+                setCurrentTab(tab);
+              }
+            }} 
+          />
+        );
         if (role === 'Pelanggan') return <PelangganDashboard onNavigate={setCurrentTab} />;
         return <div className="p-4 text-center mt-10">Welcome {role}</div>;
       case 'pelanggan':
-        return <PelangganPage onBack={() => setCurrentTab('home')} />;
+        return <PelangganPage onBack={() => setCurrentTab('home')} role={role} />;
       case 'generate_tagihan':
         return <GenerateTagihanPage onBack={() => setCurrentTab('home')} />;
       case 'template_studio':
@@ -208,9 +225,23 @@ export default function App() {
       case 'pembukuan':
         return <PembukuanPage onBack={() => setCurrentTab('home')} />;
       case 'tagihan':
-        return <TagihanPage onBack={() => setCurrentTab('home')} role={role} />;
+        return <TagihanPage 
+          onBack={() => setCurrentTab('home')} 
+          role={role} 
+          initialPeriod={tagihanInitialPeriod}
+          onNavigateToPrint={(detail) => {
+            setSelectedBillForPrint(detail);
+            setCurrentTab('print');
+          }}
+        />;
       case 'print':
-        return <PrintPage onBack={() => setCurrentTab('home')} />;
+        return <PrintPage 
+          onBack={() => {
+            setSelectedBillForPrint(null);
+            setCurrentTab('home');
+          }} 
+          selectedBill={selectedBillForPrint}
+        />;
       case 'showcase':
         return <DesignShowcase onBack={() => setCurrentTab('profile')} />;
       case 'profile':
@@ -218,67 +249,69 @@ export default function App() {
           <div className="flex flex-col h-[100dvh] bg-white relative overflow-hidden">
             <PageHeader title="PENGATURAN & PROFIL" onBack={() => setCurrentTab('home')} />
             <div className="p-5 overflow-y-auto pb-32 space-y-6 flex-1">
-              <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-200 space-y-4">
-                <h3 className="font-bold text-sm text-slate-700 block border-b border-slate-100 pb-2">Identitas Aplikasi</h3>
-                
-                <div>
-                  <label className="text-xs text-slate-500 font-bold mb-2 block">Upload Logo Perusahaan</label>
-                  <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 rounded-xl border-2 border-dashed border-slate-300 flex items-center justify-center bg-slate-50 overflow-hidden shrink-0">
-                      {appSettings.logo ? <img src={appSettings.logo} className="w-full h-full object-cover" /> : <LayoutDashboard className="text-slate-400" />}
+              {role !== 'Kolektor' && (
+                <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-200 space-y-4">
+                  <h3 className="font-bold text-sm text-slate-700 block border-b border-slate-100 pb-2">Identitas Aplikasi</h3>
+                  
+                  <div>
+                    <label className="text-xs text-slate-500 font-bold mb-2 block">Upload Logo Perusahaan</label>
+                    <div className="flex items-center gap-4">
+                      <div className="w-16 h-16 rounded-xl border-2 border-dashed border-slate-300 flex items-center justify-center bg-slate-50 overflow-hidden shrink-0">
+                        {appSettings.logo ? <img src={appSettings.logo} className="w-full h-full object-cover" /> : <LayoutDashboard className="text-slate-400" />}
+                      </div>
+                      <input 
+                        type="file" 
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const r = new FileReader();
+                            r.onload = (e) => setAppSettings(prev => ({ ...prev, logo: e.target?.result as string }));
+                            r.readAsDataURL(file);
+                          }
+                        }}
+                        className="text-xs text-slate-600 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                      />
                     </div>
-                    <input 
-                      type="file" 
-                      accept="image/*"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          const r = new FileReader();
-                          r.onload = (e) => setAppSettings(prev => ({ ...prev, logo: e.target?.result as string }));
-                          r.readAsDataURL(file);
-                        }
-                      }}
-                      className="text-xs text-slate-600 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                    />
                   </div>
-                </div>
 
-                <div className="space-y-3 pt-2">
-                  <div>
-                    <label className="text-xs text-slate-500 font-bold mb-1 block">Nama Usaha / Aplikasi</label>
-                    <input 
-                      type="text" 
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-700 outline-none focus:border-blue-500 transition-all" 
-                      value={appSettings.appName} 
-                      onChange={(e) => setAppSettings(prev => ({ ...prev, appName: e.target.value }))}
-                    />
+                  <div className="space-y-3 pt-2">
+                    <div>
+                      <label className="text-xs text-slate-500 font-bold mb-1 block">Nama Usaha / Aplikasi</label>
+                      <input 
+                        type="text" 
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-700 outline-none focus:border-blue-500 transition-all" 
+                        value={appSettings.appName} 
+                        onChange={(e) => setAppSettings(prev => ({ ...prev, appName: e.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-slate-500 font-bold mb-1 block">Alamat Usaha</label>
+                      <input 
+                        type="text" 
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-700 outline-none focus:border-blue-500 transition-all" 
+                        value={appSettings.address} 
+                        onChange={(e) => setAppSettings(prev => ({ ...prev, address: e.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-slate-500 font-bold mb-1 block">Nomor Contact</label>
+                      <input 
+                        type="text" 
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-700 outline-none focus:border-blue-500 transition-all" 
+                        value={appSettings.appContact || ''} 
+                        onChange={(e) => setAppSettings(prev => ({ ...prev, appContact: e.target.value }))}
+                      />
+                    </div>
+                    <button 
+                      onClick={() => saveAppSettings(appSettings).then(() => showToast('Identitas aplikasi disimpan'))}
+                      className="bg-blue-600 text-white shadow-lg shadow-blue-200 px-4 py-3.5 rounded-xl text-sm font-bold w-full hover:bg-blue-700 transition-all active:scale-95"
+                    >
+                      Simpan Identitas Aplikasi
+                    </button>
                   </div>
-                  <div>
-                    <label className="text-xs text-slate-500 font-bold mb-1 block">Alamat Usaha</label>
-                    <input 
-                      type="text" 
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-700 outline-none focus:border-blue-500 transition-all" 
-                      value={appSettings.address} 
-                      onChange={(e) => setAppSettings(prev => ({ ...prev, address: e.target.value }))}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs text-slate-500 font-bold mb-1 block">Nomor Contact</label>
-                    <input 
-                      type="text" 
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-700 outline-none focus:border-blue-500 transition-all" 
-                      value={appSettings.appContact || ''} 
-                      onChange={(e) => setAppSettings(prev => ({ ...prev, appContact: e.target.value }))}
-                    />
-                  </div>
-                  <button 
-                    onClick={() => saveAppSettings(appSettings).then(() => showToast('Identitas aplikasi disimpan'))}
-                    className="bg-blue-600 text-white shadow-lg shadow-blue-200 px-4 py-3.5 rounded-xl text-sm font-bold w-full hover:bg-blue-700 transition-all active:scale-95"
-                  >
-                    Simpan Identitas Aplikasi
-                  </button>
                 </div>
-              </div>
+              )}
 
               <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-200 space-y-4">
                 <h3 className="font-bold text-sm text-slate-700 block border-b border-slate-100 pb-2">Profil Pengguna</h3>
@@ -469,33 +502,54 @@ export default function App() {
         )}
 
         {/* Content Area */}
-        <main className="flex-1 overflow-y-auto pb-28">
+        <main className={`flex-1 ${isHomeView ? 'overflow-y-auto pb-32' : 'h-full min-h-0 relative flex flex-col'}`}>
           {renderContent()}
         </main>
 
         {/* Bottom Navigation */}
         <nav className="absolute bottom-4 left-4 right-4 bg-white/95 backdrop-blur shadow-xl rounded-2xl border border-slate-200 p-1.5 flex items-center justify-between z-40 no-print">
           <button 
-            onClick={() => setCurrentTab('home')}
-            className={`flex flex-col items-center justify-center flex-1 h-16 rounded-xl transition-colors ${currentTab === 'home' || ['pelanggan', 'generate_tagihan', 'template_studio', 'pembukuan'].includes(currentTab) ? 'bg-[#0000ff] text-white shadow-inner shadow-blue-800' : 'text-slate-500 hover:bg-slate-100'}`}
+            onClick={() => {
+              setTagihanInitialPeriod(null);
+              setCurrentTab('home');
+            }}
+            className={`flex flex-col items-center justify-center flex-1 h-16 rounded-xl transition-colors ${currentTab === 'home' || (role !== 'Kolektor' && ['pelanggan', 'generate_tagihan', 'template_studio', 'pembukuan'].includes(currentTab)) || (role === 'Kolektor' && ['generate_tagihan', 'template_studio', 'pembukuan'].includes(currentTab)) ? 'bg-[#0000ff] text-white shadow-inner shadow-blue-800' : 'text-slate-500 hover:bg-slate-50'}`}
           >
             <LayoutDashboard size={24} />
             <span className="text-[10px] font-bold mt-1">HOME</span>
           </button>
-          <button 
-            onClick={() => setCurrentTab('tagihan')}
-            className={`flex flex-col items-center justify-center flex-1 h-16 rounded-xl transition-colors ${currentTab === 'tagihan' ? 'bg-[#0000ff] text-white shadow-inner shadow-blue-800' : 'text-slate-500 hover:bg-slate-100'}`}
-          >
-            <FileText size={24} />
-            <span className="text-[10px] font-bold mt-1">TAGIHAN</span>
-          </button>
-          <button 
-            onClick={() => setCurrentTab('print')}
-            className={`flex flex-col items-center justify-center flex-1 h-16 rounded-xl transition-colors ${currentTab === 'print' ? 'bg-[#0000ff] text-white shadow-inner shadow-blue-800' : 'text-slate-500 hover:bg-slate-100'}`}
-          >
-            <Printer size={24} />
-            <span className="text-[10px] font-bold mt-1">PRINT</span>
-          </button>
+          {role !== 'Kolektor' && (
+            <button 
+              onClick={() => {
+                setTagihanInitialPeriod(null);
+                setCurrentTab('tagihan');
+              }}
+              className={`flex flex-col items-center justify-center flex-1 h-16 rounded-xl transition-colors ${currentTab === 'tagihan' ? 'bg-[#0000ff] text-white shadow-inner shadow-blue-800' : 'text-slate-500 hover:bg-slate-100'}`}
+            >
+              <FileText size={24} />
+              <span className="text-[10px] font-bold mt-1">TAGIHAN</span>
+            </button>
+          )}
+          {role === 'Kolektor' ? (
+            <button 
+              onClick={() => setCurrentTab('pelanggan')}
+              className={`flex flex-col items-center justify-center flex-1 h-16 rounded-xl transition-colors ${currentTab === 'pelanggan' ? 'bg-[#0000ff] text-white shadow-inner shadow-blue-800' : 'text-slate-500 hover:bg-slate-100'}`}
+            >
+              <Users size={24} />
+              <span className="text-[10px] font-bold mt-1 uppercase">Pelanggan</span>
+            </button>
+          ) : (
+            <button 
+              onClick={() => {
+                setSelectedBillForPrint(null);
+                setCurrentTab('print');
+              }}
+              className={`flex flex-col items-center justify-center flex-1 h-16 rounded-xl transition-colors ${currentTab === 'print' ? 'bg-[#0000ff] text-white shadow-inner shadow-blue-800' : 'text-slate-500 hover:bg-slate-100'}`}
+            >
+              <Printer size={24} />
+              <span className="text-[10px] font-bold mt-1">PRINT</span>
+            </button>
+          )}
           <button 
             onClick={() => setCurrentTab('profile')}
             className={`flex flex-col items-center justify-center flex-1 h-16 rounded-xl transition-colors ${currentTab === 'profile' ? 'bg-[#0000ff] text-white shadow-inner shadow-blue-800' : 'text-slate-500 hover:bg-slate-100'}`}
